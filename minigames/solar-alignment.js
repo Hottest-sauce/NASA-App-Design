@@ -11,16 +11,16 @@ import { DadPhone } from '../shared/dadphone.js';
 
 const R = Math.PI / 180;
 const CFG = {
-  seconds: 20,
-  speed: 50,
+  seconds: 15,
+  speed: 60,
   limit: 75,
   lockAt: 0.95,
   dropAt: 0.85,
-  lockSecs: 4,
+  lockSecs: 5,
   pointsPerSec: 12,
   pointsPerPower: 25,
-  maxPower: 100,
-  failThreshold: 30,
+  maxPower: 500,
+  failThreshold: 50,
 };
 
 const svgMarkup = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><rect width='200' height='120' fill='#0d1b2a'/><circle cx='30' cy='25' r='12' fill='#ffd24d'/><g stroke='#ffd24d' stroke-width='2' stroke-dasharray='4 3'><line x1='40' y1='31' x2='108' y2='70'/><line x1='34' y1='37' x2='102' y2='76'/></g><rect x='85' y='72' width='60' height='8' fill='#1d3f8a' stroke='#8fb4ff' transform='rotate(120 115 76)'/><text x='14' y='112' fill='#cfe' font-size='10' font-family='sans-serif'>rays hit head-on = max power</text></svg>";
@@ -258,7 +258,7 @@ export async function mountSolarAlignment(container, opts = {}) {
       s.t += dt;
 
       // Rate is strictly non-linear to reward exact alignment
-      const proximityRate = Math.pow(al, 2.5);
+      const proximityRate = Math.pow(al, 4);
 
       if (al >= CFG.lockAt) s.lock += dt;
       else if (al < CFG.dropAt) s.lock = 0;

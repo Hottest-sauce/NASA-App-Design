@@ -37,7 +37,7 @@ export function playCutscene(videoSrc, title = 'Mission Briefing') {
       </button>
 
       <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; max-width:1100px; padding:20px;">
-        <video id="cutscene-video" playsinline controls autoplay style="
+        <video id="cutscene-video" playsinline autoplay style="
           width: 100%; max-height: 85vh; border-radius: 8px;
           box-shadow: 0 0 40px rgba(0,0,0,0.9), 0 0 25px rgba(0, 188, 212, 0.2);
           background: #000;

@@ -1,5 +1,6 @@
 // sols/sol-1.js — Act 2 & Act 3: Jezero Crater Detour & Night Dust Storm (Sol 1)
 import { DadPhone } from '../shared/dadphone.js';
+import { mountCliffClimb } from '../minigames/cliff-climb.js';
 
 export async function mountSol1(container, state) {
   const temp = state.temperature || { currentAvg: -64.2, currentMin: -97.1, currentMax: -15.3, latestSol: '1222' };
@@ -8,6 +9,7 @@ export async function mountSol1(container, state) {
     return `
       <div style="background:#0a192f; border:1px solid #1f4068; border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:14px; font-size:.88rem; align-items:center;">
         <div>⚡ Base Power: <b style="color:#00e5ff;">${state.power}%</b></div>
+        <div>🔋 Rover Battery: <b style="color:${(state.roverBattery !== undefined ? state.roverBattery : 100) > 25 ? '#4caf50' : '#f44336'};">${state.roverBattery !== undefined ? state.roverBattery + '%' : '100%'}</b></div>
         <div>💧 Water: <b style="color:#64b5f6;">${state.water} kg</b></div>
         <div>🫁 Oxygen: <b style="color:#81c784;">${state.oxygen} kg</b></div>
         <div>🌡️ Temp: <b style="color:#ffb74d;">${temp.currentAvg}°C</b> <small style="opacity:.7;">(InSight)</small></div>
@@ -15,6 +17,60 @@ export async function mountSol1(container, state) {
         <div>🧪 Research: <b style="color:#ffd54f;">${state.research} MB</b></div>
       </div>
     `;
+  }
+
+  // --- MINIGAME: CLIFF-FACE ROVER CLIMB (1 MINUTE VERTICAL AUTOSCROLLER) ---
+  // Occurs after Sol 0 airlock egress and before Node 2.0 (Neretva Vallis)
+  container.innerHTML = `
+    <div id="hud-bar">${renderHUD()}</div>
+    <div id="cliff-minigame-wrapper"></div>
+  `;
+
+  await DadPhone.say({
+    from: 'narrator',
+    lines: [
+      'Sol 1 begins. The rover rolls down the airlock ramp onto Martian regolith.',
+      'Ahead lies the steep canyon ascent leading to the Jezero rim overlook.',
+      'Dodge boulders and potholes! Watch out for rock cracks limiting your steering lane.',
+      'Steer with Arrow Keys, A/D, or drag across the track. 2 hits maximum before battery failure!'
+    ]
+  });
+
+  const cliffWrapper = container.querySelector('#cliff-minigame-wrapper');
+  const climbResult = await mountCliffClimb(cliffWrapper, {
+    durationSec: 60,
+    initialBattery: state.power || 100
+  });
+
+  // Handle outcome & penalties (no retry permitted!)
+  if (climbResult.survived) {
+    state.roverBattery = climbResult.finalBattery;
+    await DadPhone.say({
+      from: 'narrator',
+      lines: [
+        'Transit complete! You navigated the canyon and parked at Jezero Cliff Overlook.',
+        `Rover battery holds at ${climbResult.finalBattery}%. Pressurization nominal as you step out onto the surface.`,
+        'Ahead lies the geological expanse of Neretva Vallis.'
+      ]
+    });
+  } else {
+    // Fail state: no retry given with penalty
+    state.roverBattery = 0;
+    state.cliffFailed = true;
+    const waterPenalty = 0.93;
+    const oxyPenalty = 0.45;
+    state.water = +(Math.max(1.0, state.water - waterPenalty)).toFixed(2);
+    state.oxygen = +(Math.max(0.4, state.oxygen - oxyPenalty)).toFixed(2);
+
+    await DadPhone.say({
+      from: 'narrator',
+      lines: [
+        'CRITICAL ALERT: Rover battery was drained after obstacle impacts on the cliff ascent!',
+        'Emergency winch protocol deployed to reach the overlook on auxiliary power.',
+        `PENALTY APPLIED: Deducted ${waterPenalty} kg Water and ${oxyPenalty} kg Oxygen for manual winch recovery.`,
+        'Mission protocol forbids retries. You step out onto the rim to proceed with the expedition.'
+      ]
+    });
   }
 
   // --- STAGE 1: NERETVA VALLIS DETOUR ---
