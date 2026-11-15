@@ -6,15 +6,51 @@ export async function mountSol1(container, state) {
   const temp = state.temperature || { currentAvg: -64.2, currentMin: -97.1, currentMax: -15.3, latestSol: '1222' };
 
   function renderHUD() {
+    // Water and oxygen represented with visual bars rather than numbers
+    const waterPct = Math.min(100, Math.max(0, (state.water / 7.0) * 100));
+    const oxyPct = Math.min(100, Math.max(0, (state.oxygen / 2.5) * 100));
+    const batPct = state.roverBattery !== undefined ? Math.min(100, Math.max(0, state.roverBattery)) : 100;
+
     return `
-      <div style="background:#0a192f; border:1px solid #1f4068; border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:14px; font-size:.88rem; align-items:center;">
-        <div>⚡ Base Power: <b style="color:#00e5ff;">${state.power}%</b></div>
-        <div>🔋 Rover Battery: <b style="color:${(state.roverBattery !== undefined ? state.roverBattery : 100) > 25 ? '#4caf50' : '#f44336'};">${state.roverBattery !== undefined ? state.roverBattery + '%' : '100%'}</b></div>
-        <div>💧 Water: <b style="color:#64b5f6;">${state.water} kg</b></div>
-        <div>🫁 Oxygen: <b style="color:#81c784;">${state.oxygen} kg</b></div>
-        <div>🌡️ Temp: <b style="color:#ffb74d;">${temp.currentAvg}°C</b> <small style="opacity:.7;">(InSight)</small></div>
+      <div id="hud-bar-container" style="max-width:680px; margin:0 auto 14px; background:#0a192f; border:1px solid #1f4068; border-radius:10px; padding:12px 16px; display:flex; flex-wrap:wrap; gap:16px; font-size:.88rem; align-items:center;">
+        <div>⚡ Base: <b style="color:#00e5ff;">${state.power}%</b></div>
+        
+        <!-- Rover Battery Bar (Pixel Art matching lower minigame battery) -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-family:monospace; font-size:.78rem; color:#80cbc4;">🔋 ROVER:</span>
+          <div style="display:flex; align-items:center;">
+            <div style="
+              width:56px; height:24px; border:3px solid #1b4320; border-radius:2px;
+              background:#a4cca4; position:relative; padding:2px; display:flex; gap:3px;
+              box-sizing:border-box;
+            ">
+              <div id="top-bat-seg-1" style="flex:1; background:${batPct > 0 ? (batPct > 25 ? '#38761d' : '#e65100') : 'transparent'}; border:1px solid #274e13; border-radius:1px; transition:background .2s;"></div>
+              <div id="top-bat-seg-2" style="flex:1; background:${batPct > 25 ? '#38761d' : 'transparent'}; border:1px solid #274e13; border-radius:1px; transition:background .2s;"></div>
+              <div id="top-bat-seg-3" style="flex:1; background:${batPct > 60 ? '#38761d' : 'transparent'}; border:1px solid #274e13; border-radius:1px; transition:background .2s;"></div>
+            </div>
+            <div style="width:4px; height:10px; background:#a4cca4; border:2px solid #1b4320; border-left:none; border-radius:0 2px 2px 0; margin-left:-1px;"></div>
+          </div>
+          <b id="top-battery-num" style="color:#00e5ff; font-family:monospace; font-size:.9rem;">${batPct}%</b>
+        </div>
+
+        <!-- Water Bar (Bar representation rather than numbers) -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>💧 Water:</span>
+          <div title="Water Supply" style="width:100px; height:14px; background:#051528; border:1.5px solid #1976d2; border-radius:4px; padding:1px; overflow:hidden; box-shadow:inset 0 0 5px rgba(0,0,0,0.8);">
+            <div style="width:${waterPct.toFixed(1)}%; height:100%; background:linear-gradient(90deg, #0288d1, #4fc3f7); border-radius:2px; transition:width .4s ease;"></div>
+          </div>
+        </div>
+
+        <!-- Oxygen Bar (Bar representation rather than numbers) -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>🫁 Oxygen:</span>
+          <div title="Oxygen Supply" style="width:100px; height:14px; background:#061e0e; border:1.5px solid #2e7d32; border-radius:4px; padding:1px; overflow:hidden; box-shadow:inset 0 0 5px rgba(0,0,0,0.8);">
+            <div style="width:${oxyPct.toFixed(1)}%; height:100%; background:linear-gradient(90deg, #2e7d32, #81c784); border-radius:2px; transition:width .4s ease;"></div>
+          </div>
+        </div>
+
+        <div>🌡️ Temp: <b style="color:#ffb74d;">${temp.currentAvg}°C</b></div>
         <div>📡 Comms: <b style="color:${state.communications ? '#4caf50' : '#f44336'};">${state.communications ? 'ONLINE' : 'OFFLINE'}</b></div>
-        <div>🧪 Research: <b style="color:#ffd54f;">${state.research} MB</b></div>
       </div>
     `;
   }
@@ -45,14 +81,6 @@ export async function mountSol1(container, state) {
   // Handle outcome & penalties (no retry permitted!)
   if (climbResult.survived) {
     state.roverBattery = climbResult.finalBattery;
-    await DadPhone.say({
-      from: 'narrator',
-      lines: [
-        'Transit complete! You navigated the canyon and parked at Jezero Cliff Overlook.',
-        `Rover battery holds at ${climbResult.finalBattery}%. Pressurization nominal as you step out onto the surface.`,
-        'Ahead lies the geological expanse of Neretva Vallis.'
-      ]
-    });
   } else {
     // Fail state: no retry given with penalty
     state.roverBattery = 0;
@@ -61,21 +89,20 @@ export async function mountSol1(container, state) {
     const oxyPenalty = 0.45;
     state.water = +(Math.max(1.0, state.water - waterPenalty)).toFixed(2);
     state.oxygen = +(Math.max(0.4, state.oxygen - oxyPenalty)).toFixed(2);
-
-    await DadPhone.say({
-      from: 'narrator',
-      lines: [
-        'CRITICAL ALERT: Rover battery was drained after obstacle impacts on the cliff ascent!',
-        'Emergency winch protocol deployed to reach the overlook on auxiliary power.',
-        `PENALTY APPLIED: Deducted ${waterPenalty} kg Water and ${oxyPenalty} kg Oxygen for manual winch recovery.`,
-        'Mission protocol forbids retries. You step out onto the rim to proceed with the expedition.'
-      ]
-    });
   }
 
-  // --- STAGE 1: NERETVA VALLIS DETOUR ---
+  // IMMEDIATELY advance to the next section (Node 2.0: Neretva Vallis) so player is never left on the canvas!
   container.innerHTML = `
     <div id="hud-bar">${renderHUD()}</div>
+
+    ${state.cliffFailed ? `
+      <div style="background:#260d0d; border:2px solid #f44336; border-radius:8px; padding:12px 16px; margin-bottom:16px;">
+        <b style="color:#ff5252; font-size:1.02rem;">⚠️ CLIFF-FACE ASCENT FAILURE — EMERGENCY RECOVERY PENALTY</b>
+        <p style="margin:6px 0 0; font-size:.88rem; color:#ffcdd2;">
+          The rover battery was completely drained during the cliff ascent. Manual emergency winch recovery was required to haul the rover onto the rim: <b>Water and Oxygen supplies were deducted</b>. Mission protocol forbids retries.
+        </p>
+      </div>
+    ` : ''}
 
     <div class="scene" id="stage1-scene">
       <h1>🔴 Perseverance Challenge</h1>
@@ -108,6 +135,28 @@ export async function mountSol1(container, state) {
       <div id="stage1-outcome"></div>
     </div>
   `;
+
+  // Narrate outcome while already displaying Stage 1
+  if (climbResult.survived) {
+    await DadPhone.say({
+      from: 'narrator',
+      lines: [
+        'Transit complete! You navigated the canyon and parked at Jezero Cliff Overlook.',
+        `Rover battery holds at ${climbResult.finalBattery}%. Pressurization nominal as you step out onto the surface.`,
+        'Ahead lies the geological expanse of Neretva Vallis.'
+      ]
+    });
+  } else {
+    await DadPhone.say({
+      from: 'narrator',
+      lines: [
+        'CRITICAL ALERT: Rover battery was drained after obstacle impacts on the cliff ascent!',
+        'Emergency winch protocol deployed to reach the overlook on auxiliary power.',
+        'PENALTY APPLIED: Water and Oxygen supplies reduced for manual winch recovery.',
+        'Mission protocol forbids retries. You step out onto the rim to proceed with the expedition.'
+      ]
+    });
+  }
 
   await DadPhone.say({
     from: 'narrator',

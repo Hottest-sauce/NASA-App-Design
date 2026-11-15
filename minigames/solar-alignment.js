@@ -284,6 +284,9 @@ export async function mountSolarAlignment(container, opts = {}) {
         s.running = false;
         s.done && s.done();
       }
+    } else if (!s.syncingCutscene) {
+      // During DadPhone introduction: power visibly surges and drops as the panel swings
+      s.level = Math.max(0, Math.min(100, Math.pow(al, 3) * 100));
     }
 
     fill.style.height = s.level.toFixed(1) + '%';
@@ -426,6 +429,10 @@ export async function mountSolarAlignment(container, opts = {}) {
 
   animId = requestAnimationFrame(frame);
 
+  if (opts.autoStart !== false) {
+    setTimeout(() => { if (!s.busy) btn.click(); }, 150);
+  }
+
   const result = await new Promise((resolve) => {
     btn.onclick = async () => {
       s = fresh();
@@ -434,7 +441,18 @@ export async function mountSolarAlignment(container, opts = {}) {
       resEl.hidden = true;
       fill.classList.remove('fail');
 
-      if (opts.intro !== false) await DadPhone.say({ from: 'dad', lines: INTRO });
+      if (opts.intro !== false) {
+        await DadPhone.say({ from: 'dad', lines: INTRO });
+      }
+
+      // RESET THE BAR TO 0 ONCE PLAYER CAN CONTROL
+      s.level = 0;
+      fill.style.height = '0%';
+      powerPctLabel.textContent = '0%';
+      s.base = 0;
+      s.bonus = 0;
+      s.lock = 0;
+      s.t = 0;
 
       last = performance.now();
       s.running = true;

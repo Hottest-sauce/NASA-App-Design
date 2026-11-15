@@ -16,11 +16,30 @@ export async function mountSol2(container, state) {
   state.path = full3Path;
 
   function renderHUD() {
+    // Water and oxygen represented with visual bars rather than numbers
+    const waterPct = Math.min(100, Math.max(0, (state.water / 7.0) * 100));
+    const oxyPct = Math.min(100, Math.max(0, (state.oxygen / 2.5) * 100));
+
     return `
-      <div style="background:#0a192f; border:1px solid #1f4068; border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:14px; font-size:.88rem; align-items:center;">
+      <div style="background:#0a192f; border:1px solid #1f4068; border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:16px; font-size:.88rem; align-items:center;">
         <div>⚡ Base Power: <b style="color:#00e5ff;">${state.power}%</b></div>
-        <div>💧 Water: <b style="color:#64b5f6;">${state.water} kg</b></div>
-        <div>🫁 Oxygen: <b style="color:#81c784;">${state.oxygen} kg</b></div>
+        
+        <!-- Water Bar (Bar representation rather than numbers) -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>💧 Water:</span>
+          <div title="Water Supply" style="width:110px; height:14px; background:#051528; border:1.5px solid #1976d2; border-radius:4px; padding:1px; overflow:hidden; box-shadow:inset 0 0 5px rgba(0,0,0,0.8);">
+            <div style="width:${waterPct.toFixed(1)}%; height:100%; background:linear-gradient(90deg, #0288d1, #4fc3f7); border-radius:2px; transition:width .4s ease;"></div>
+          </div>
+        </div>
+
+        <!-- Oxygen Bar (Bar representation rather than numbers) -->
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>🫁 Oxygen:</span>
+          <div title="Oxygen Supply" style="width:110px; height:14px; background:#061e0e; border:1.5px solid #2e7d32; border-radius:4px; padding:1px; overflow:hidden; box-shadow:inset 0 0 5px rgba(0,0,0,0.8);">
+            <div style="width:${oxyPct.toFixed(1)}%; height:100%; background:linear-gradient(90deg, #2e7d32, #81c784); border-radius:2px; transition:width .4s ease;"></div>
+          </div>
+        </div>
+
         <div>🌡️ Temp: <b style="color:#ffb74d;">${temp.currentAvg}°C</b> <small style="opacity:.7;">(InSight)</small></div>
         <div>📡 Comms: <b style="color:${state.communications ? '#4caf50' : '#f44336'};">${state.communications ? 'ONLINE' : 'OFFLINE'}</b></div>
         <div>📍 Path Code: <b style="color:#ffd54f;">${full3Path}</b></div>

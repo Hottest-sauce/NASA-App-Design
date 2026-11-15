@@ -92,6 +92,9 @@ const charFor = (line, s) => {
 };
 
 function play(script) {
+  if (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE) {
+    return Promise.resolve();
+  }
   return new Promise((resolve) => { queue.push({ script, resolve }); if (!st) next(); });
 }
 function next() { const job = queue.shift(); if (job) run(job); }

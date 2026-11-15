@@ -4,8 +4,8 @@
 
 export function playCutscene(videoSrc, title = 'Mission Briefing') {
   return new Promise((resolve) => {
-    // If running in an environment without DOM, resolve immediately
-    if (typeof document === 'undefined' || !document.body) {
+    // If running in an environment without DOM or secret skip active, resolve immediately
+    if (typeof document === 'undefined' || !document.body || (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE)) {
       return resolve();
     }
 

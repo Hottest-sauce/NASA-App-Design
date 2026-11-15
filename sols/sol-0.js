@@ -26,7 +26,7 @@ export async function mountSol0(container, state) {
 
       <!-- Camera / Station Selector Buttons -->
       <div class="hab-cam-grid">
-        <button class="hab-cam-btn active" data-cam="solar">
+        <button class="hab-cam-btn" data-cam="solar">
           <span class="cam-id">CAM 01</span>
           <span class="cam-title">☀️ Solar Power</span>
           <span class="cam-status" id="status-cam-solar">Efficiency: Baseline (50%)</span>
@@ -67,8 +67,47 @@ export async function mountSol0(container, state) {
   const minigameMount = container.querySelector('#minigame-mount');
   const habHubEl = container.querySelector('#hab-hub');
 
-  let activeCam = 'solar';
+  let activeCam = null;
   let solarCalibrated = false;
+
+  // Station overview screen (shown before any camera feed is selected)
+  function renderOverview() {
+    activeCam = null;
+    camButtons.forEach(btn => btn.classList.remove('active'));
+    viewscreen.innerHTML = `
+      <div style="padding:10px 14px; font-family:system-ui,sans-serif;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1a365d; padding-bottom:8px; margin-bottom:12px;">
+          <b style="color:#00e5ff; font-size:1.05rem; letter-spacing:0.05em;">🛰️ HABITAT CENTRAL MONITOR // JEZERO OUTPOST</b>
+          <span style="font-family:monospace; color:#4caf50;">ONLINE • UTC TELEMETRY</span>
+        </div>
+        <p style="color:#cfd8dc; font-size:0.92rem; margin-bottom:14px;">
+          Base systems are operating under baseline autonomous routines. Exterior temperature is <b>${temp.currentAvg}°C</b>.
+          Select a camera feed above to inspect module telemetry or calibrate station arrays.
+        </p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-family:monospace; font-size:0.85rem;">
+          <div style="background:#040c17; border:1px solid #1f3a60; border-radius:6px; padding:8px 12px;">
+            <span style="color:#ffd54f; font-weight:700;">☀️ CAM 01: SOLAR POWER</span><br>
+            <span style="color:#80cbc4; font-size:0.78rem;">Status: Awaiting Calibration (50%)</span>
+          </div>
+          <div style="background:#040c17; border:1px solid #1f3a60; border-radius:6px; padding:8px 12px;">
+            <span style="color:#81c784; font-weight:700;">🥔 CAM 02: PLANT WATERING</span><br>
+            <span style="color:#80cbc4; font-size:0.78rem;">Status: Soil Moisture 38% (Low)</span>
+          </div>
+          <div style="background:#040c17; border:1px solid #1f3a60; border-radius:6px; padding:8px 12px;">
+            <span style="color:#64b5f6; font-weight:700;">📡 CAM 03: COMMS</span><br>
+            <span style="color:#80cbc4; font-size:0.78rem;">Status: DSN Locked (14.2m delay)</span>
+          </div>
+          <div style="background:#040c17; border:1px solid #1f3a60; border-radius:6px; padding:8px 12px;">
+            <span style="color:#ffb74d; font-weight:700;">🚪 CAM 04: OXYGEN & ROVER</span><br>
+            <span style="color:#80cbc4; font-size:0.78rem;">Status: Pre-Egress Checklist</span>
+          </div>
+        </div>
+        <div style="margin-top:14px; color:#ffd54f; font-family:monospace; font-size:0.85rem; text-align:center;">
+          👆 Click a camera button above to switch feeds.
+        </div>
+      </div>
+    `;
+  }
 
   // Station render logic
   function renderCamView(cam) {
@@ -185,7 +224,8 @@ export async function mountSol0(container, state) {
     ]
   });
 
-  renderCamView('solar');
+  // Render overview first (does not immediately open CAM 01)
+  renderOverview();
 
   let resolveDeparture;
   const departurePromise = new Promise(res => { resolveDeparture = res; });

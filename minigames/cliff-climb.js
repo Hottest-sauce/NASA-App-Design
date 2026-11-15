@@ -1,17 +1,35 @@
 // minigames/cliff-climb.js — Cliff-Face Rover Climbing Autoscroller
-// Target duration: 60 seconds (1 minute).
 // Features:
 // - Top-down abstracted space rover constrained vertically at bottom 35% of container
-// - Autoscrolling Martian canyon terrain
-// - Obstacles: Rocks & potholes (deal 40% battery damage per hit, max 2 hits)
-// - Cracks: Jagged terrain fissures that act as physical lateral barriers limiting rover steering range
-// - Passive battery drain over time + segmented pixel battery visualization
-// - "Go!" countdown start
-// - Ending Cutscene: Rover parks, hatch opens, astronaut steps out onto Martian soil leaving footprints
+// - Rock sprites loaded from "assets/images/Rock sprites.png" (9 distinct sprites)
+// - Rock impact bounces rover back along Y with deceleration & smooth reacceleration phase
+// - Randomized cracks that the rover can pass through without steering blocks
+// - Passive battery drain at 1% per second
+// - Rover battery HUD on top screen synchronized and aligned with lower battery HUD
+// - Ending cutscene occurs on click (player clicks to step out & survey overlook)
+// - Secret Konami code (UP UP DOWN LEFT RIGHT UP) instant skip support
 
 import { DadPhone } from '../shared/dadphone.js';
 
 const DEG2RAD = Math.PI / 180;
+
+// 9 Rock Sprite Bounding Boxes from "Rock sprites.png" (360x360)
+const ROCK_SPRITES = [
+  { sx: 14,  sy: 33,  sw: 99,  sh: 68 },
+  { sx: 137, sy: 22,  sw: 98,  sh: 78 },
+  { sx: 255, sy: 34,  sw: 90,  sh: 67 },
+  { sx: 14,  sy: 140, sw: 95,  sh: 76 },
+  { sx: 124, sy: 135, sw: 97,  sh: 79 },
+  { sx: 250, sy: 127, sw: 95,  sh: 89 },
+  { sx: 12,  sy: 246, sw: 95,  sh: 85 },
+  { sx: 126, sy: 272, sw: 105, sh: 60 },
+  { sx: 246, sy: 249, sw: 96,  sh: 85 },
+];
+
+const rockImg = new Image();
+rockImg.src = 'assets/images/Rock sprites.png';
+let rockImgReady = false;
+rockImg.onload = () => { rockImgReady = true; };
 
 /**
  * Mount and run the Cliff-Face Rover Climbing Game
@@ -21,7 +39,7 @@ const DEG2RAD = Math.PI / 180;
  */
 export async function mountCliffClimb(container, opts = {}) {
   const DURATION = opts.durationSec || 60;
-  // Ensure rover battery starts at 100% (or base power scaled to full capacity, allowing 2 hits max before critical drain)
+  // Ensure rover battery starts at 100% (allowing 2 hits max before critical drain)
   let battery = 100;
   if (opts.initialBattery !== undefined) {
     battery = Math.min(100, Math.max(90, opts.initialBattery));
@@ -128,6 +146,8 @@ export async function mountCliffClimb(container, opts = {}) {
   const rover = {
     x: W / 2,
     y: ROVER_FIXED_Y,
+    bounceOffset: 0, // dynamic bounce offset in px (bounces down/back upon rock impact)
+    shudder: 0,
     w: 36,
     h: 56,
     vx: 0,
@@ -138,7 +158,8 @@ export async function mountCliffClimb(container, opts = {}) {
   };
 
   // Autoscroll speed
-  let scrollSpeed = 240; // px/s
+  const NORMAL_SPEED = 240;
+  let scrollSpeed = NORMAL_SPEED; // px/s
   let terrainOffset = 0;
 
   // Obstacle arrays
@@ -171,49 +192,65 @@ export async function mountCliffClimb(container, opts = {}) {
     } catch (e) {}
   }
 
-  // --- UPDATE BATTERY UI ---
+  // --- UPDATE BATTERY UI (SYNCHRONIZED WITH TOP HUD BATTERY) ---
   function updateBatteryUI() {
     batNum.textContent = Math.max(0, Math.round(battery)) + '%';
     
-    // 3 Segment logic matching retro pixel green palette
-    if (battery > 60) {
-      batSeg1.style.background = '#38761d';
-      batSeg2.style.background = '#38761d';
-      batSeg3.style.background = '#38761d';
-      batSeg1.style.borderColor = '#274e13';
-      batSeg2.style.borderColor = '#274e13';
-      batSeg3.style.borderColor = '#274e13';
-      batNum.style.color = '#00e5ff';
-    } else if (battery > 25) {
-      // 1 hit taken (down by 40%): 2 segments remaining
-      batSeg1.style.background = '#38761d';
-      batSeg2.style.background = '#38761d';
-      batSeg3.style.background = 'transparent';
-      batSeg1.style.borderColor = '#274e13';
-      batSeg2.style.borderColor = '#274e13';
-      batSeg3.style.borderColor = 'transparent';
-      batNum.style.color = '#ffd54f';
-    } else if (battery > 0) {
-      // 2 hits taken (critical battery): 1 segment remaining in warning orange
-      batSeg1.style.background = '#e65100';
-      batSeg2.style.background = 'transparent';
-      batSeg3.style.background = 'transparent';
-      batSeg1.style.borderColor = '#bf360c';
-      batSeg2.style.borderColor = 'transparent';
-      batSeg3.style.borderColor = 'transparent';
-      batNum.style.color = '#ff5722';
-    } else {
-      // Battery depleted (critical failure)
-      batSeg1.style.background = 'transparent';
-      batSeg2.style.background = 'transparent';
-      batSeg3.style.background = 'transparent';
-      batSeg1.style.borderColor = 'transparent';
-      batSeg2.style.borderColor = 'transparent';
-      batSeg3.style.borderColor = 'transparent';
-      batNum.style.color = '#f44336';
-      batNum.textContent = '0% DEPLETED';
+    // Top HUD battery elements
+    const topBatSeg1 = document.getElementById('top-bat-seg-1');
+    const topBatSeg2 = document.getElementById('top-bat-seg-2');
+    const topBatSeg3 = document.getElementById('top-bat-seg-3');
+    const topBatNum = document.getElementById('top-battery-num');
+    if (topBatNum) {
+      topBatNum.textContent = Math.max(0, Math.round(battery)) + '%';
     }
+
+    const setSegments = (s1, s2, s3, label) => {
+      if (!s1 || !s2 || !s3) return;
+      if (battery > 60) {
+        s1.style.background = '#38761d';
+        s2.style.background = '#38761d';
+        s3.style.background = '#38761d';
+        s1.style.borderColor = '#274e13';
+        s2.style.borderColor = '#274e13';
+        s3.style.borderColor = '#274e13';
+        if (label) label.style.color = '#00e5ff';
+      } else if (battery > 25) {
+        s1.style.background = '#38761d';
+        s2.style.background = '#38761d';
+        s3.style.background = 'transparent';
+        s1.style.borderColor = '#274e13';
+        s2.style.borderColor = '#274e13';
+        s3.style.borderColor = 'transparent';
+        if (label) label.style.color = '#ffd54f';
+      } else if (battery > 0) {
+        s1.style.background = '#e65100';
+        s2.style.background = 'transparent';
+        s3.style.background = 'transparent';
+        s1.style.borderColor = '#bf360c';
+        s2.style.borderColor = 'transparent';
+        s3.style.borderColor = 'transparent';
+        if (label) label.style.color = '#ff5722';
+      } else {
+        s1.style.background = 'transparent';
+        s2.style.background = 'transparent';
+        s3.style.background = 'transparent';
+        s1.style.borderColor = 'transparent';
+        s2.style.borderColor = 'transparent';
+        s3.style.borderColor = 'transparent';
+        if (label) {
+          label.style.color = '#f44336';
+          label.textContent = '0% DEPLETED';
+        }
+      }
+    };
+
+    setSegments(batSeg1, batSeg2, batSeg3, batNum);
+    setSegments(topBatSeg1, topBatSeg2, topBatSeg3, topBatNum);
   }
+
+  let failureTriggered = false;
+  let arrivalTriggered = false;
 
   // --- DAMAGE LOGIC ---
   function takeDamage(reason = 'Rock Collision') {
@@ -229,11 +266,18 @@ export async function mountCliffClimb(container, opts = {}) {
     playBeep(160, 0.2, 'sawtooth');
     setTimeout(() => playBeep(90, 0.25, 'triangle'), 60);
 
+    // If rock collision, trigger severe slow down and bouncing back animation
+    if (reason.includes('Rock')) {
+      scrollSpeed = 45; // Slow down sharply upon rock impact
+      rover.bounceOffset = 34; // Bounce backward
+      rover.shudder = 10;
+    }
+
     // Sparks / debris
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 18; i++) {
       dustParticles.push({
         x: rover.x,
-        y: rover.y,
+        y: rover.y + rover.bounceOffset,
         vx: (Math.random() - 0.5) * 280,
         vy: (Math.random() - 0.5) * 280,
         r: Math.random() * 4 + 2,
@@ -242,11 +286,12 @@ export async function mountCliffClimb(container, opts = {}) {
       });
     }
 
-    if (battery <= 0 && running) {
+    if (battery <= 0 && running && !failureTriggered) {
+      failureTriggered = true;
       running = false;
       setTimeout(() => {
         if (minigameResolve) triggerFailureCutscene(minigameResolve);
-      }, 150);
+      }, 120);
     }
   }
 
@@ -281,15 +326,16 @@ export async function mountCliffClimb(container, opts = {}) {
   function spawnCycle() {
     const roll = Math.random();
 
-    if (roll < 0.42) {
-      // Spawn Rock
+    if (roll < 0.45) {
+      // Spawn Rock from Rock sprites.png
+      const spIdx = Math.floor(Math.random() * ROCK_SPRITES.length);
       rocks.push({
         x: ROAD_LEFT + 25 + Math.random() * (ROAD_RIGHT - ROAD_LEFT - 50),
-        y: -40,
-        r: Math.random() * 8 + 14,
-        rot: Math.random() * Math.PI,
-        rotSpeed: (Math.random() - 0.5) * 3,
-        color: Math.random() > 0.5 ? '#5d4037' : '#3e2723',
+        y: -50,
+        r: Math.random() * 6 + 17, // Collision radius
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 1.6,
+        sprite: ROCK_SPRITES[spIdx],
       });
     } else if (roll < 0.72) {
       // Spawn Pothole / Crater
@@ -300,18 +346,25 @@ export async function mountCliffClimb(container, opts = {}) {
         ry: Math.random() * 6 + 12,
       });
     } else {
-      // Spawn Crack (Longitudinal Fissure that divides or pinches the road)
-      const crackSide = Math.random() > 0.5 ? 'left' : 'right';
-      const crackX = crackSide === 'left'
-        ? ROAD_LEFT + 40 + Math.random() * 90
-        : ROAD_RIGHT - 40 - Math.random() * 90;
-      
+      // Spawn highly randomized Crack (rover can pass right through!)
+      const crackX = ROAD_LEFT + 25 + Math.random() * (ROAD_RIGHT - ROAD_LEFT - 50);
+      const segCount = Math.floor(Math.random() * 5) + 6; // 6 to 10 jagged segments
+      const crackLen = Math.random() * 120 + 90; // 90 to 210px
+      const segLen = crackLen / segCount;
+      const pts = [];
+      let curX = 0;
+      for (let s = 0; s < segCount; s++) {
+        curX += (Math.random() - 0.5) * 24;
+        pts.push({ dx: curX, dy: segLen * (s + 1) });
+      }
+
       cracks.push({
         x: crackX,
-        y: -140,
-        len: Math.random() * 80 + 160,
-        side: crackSide, // limits motion from this side
-        jaggedPts: [-10, 8, -6, 12, -4, 6],
+        y: -crackLen - 20,
+        len: crackLen,
+        width: Math.random() * 2.5 + 3,
+        pts,
+        color: Math.random() > 0.4 ? '#180702' : '#220b04',
       });
     }
   }
@@ -340,12 +393,26 @@ export async function mountCliffClimb(container, opts = {}) {
       if (running) {
         elapsed += dt;
 
-        // Passive battery drain over time (~0.28% per second)
-        battery = Math.max(0, battery - (0.28 * dt));
+        // Passive battery drain at a rate of 1% a second
+        battery = Math.max(0, battery - (1.0 * dt));
         updateBatteryUI();
 
+        // Bounce recovery: rover eases back to normal Y position
+        if (rover.bounceOffset > 0) {
+          rover.bounceOffset = Math.max(0, rover.bounceOffset - (75 * dt));
+        }
+        if (rover.shudder > 0) {
+          rover.shudder = Math.max(0, rover.shudder - (22 * dt));
+        }
+
+        // Reacceleration phase back to regular cruising speed
+        if (scrollSpeed < NORMAL_SPEED) {
+          scrollSpeed = Math.min(NORMAL_SPEED, scrollSpeed + (115 * dt));
+        }
+
         // Check battery depletion failure
-        if (battery <= 0) {
+        if (battery <= 0 && !failureTriggered) {
+          failureTriggered = true;
           running = false;
           triggerFailureCutscene(resolve);
           return;
@@ -356,8 +423,9 @@ export async function mountCliffClimb(container, opts = {}) {
         progressBar.style.width = progressPct.toFixed(1) + '%';
         timerLabel.textContent = Math.max(0, Math.ceil(DURATION - elapsed)) + 's';
 
-        // Check completion
-        if (elapsed >= DURATION) {
+        // Check completion (Ending cutscene occurs on click)
+        if (elapsed >= DURATION && !arrivalTriggered) {
+          arrivalTriggered = true;
           running = false;
           triggerArrivalCutscene(resolve);
           return;
@@ -370,23 +438,9 @@ export async function mountCliffClimb(container, opts = {}) {
           spawnCycle();
         }
 
-        // --- ROVER STEERING ---
-        let currentMinX = ROAD_LEFT + 22;
-        let currentMaxX = ROAD_RIGHT - 22;
-
-        // Check active cracks near rover Y that constrain lateral range
-        for (let i = 0; i < cracks.length; i++) {
-          const cr = cracks[i];
-          if (rover.y >= cr.y && rover.y <= cr.y + cr.len) {
-            if (cr.side === 'left') {
-              // Crack is on the left: cannot steer to the left of this crack!
-              currentMinX = Math.max(currentMinX, cr.x + 22);
-            } else {
-              // Crack is on the right: cannot steer to the right of this crack!
-              currentMaxX = Math.min(currentMaxX, cr.x - 22);
-            }
-          }
-        }
+        // --- ROVER STEERING (Free movement; rover can pass right through cracks!) ---
+        const currentMinX = ROAD_LEFT + 22;
+        const currentMaxX = ROAD_RIGHT - 22;
 
         if (rover.targetX !== null) {
           // Smooth move toward pointer target
@@ -398,7 +452,7 @@ export async function mountCliffClimb(container, opts = {}) {
           if (rover.steerRight) rover.x += rover.speed * dt;
         }
 
-        // Clamp inside dynamically constrained bounds
+        // Clamp inside road boundaries
         rover.x = Math.max(currentMinX, Math.min(currentMaxX, rover.x));
 
         // Constrain vertically strictly at bottom 35%
@@ -414,7 +468,8 @@ export async function mountCliffClimb(container, opts = {}) {
           rk.rot += rk.rotSpeed * dt;
 
           // Collision detection with rover box
-          const dist = Math.hypot(rover.x - rk.x, rover.y - rk.y);
+          const currentRoverY = ROVER_FIXED_Y + rover.bounceOffset;
+          const dist = Math.hypot(rover.x - rk.x, currentRoverY - rk.y);
           if (dist < rk.r + 18) {
             takeDamage('Rock Impact');
             rocks.splice(i, 1);
@@ -517,66 +572,78 @@ export async function mountCliffClimb(container, opts = {}) {
       c.fill();
     });
 
-    // 3. Draw Cracks (Fissures that constrain movement)
+    // 3. Draw Cracks (Randomized terrain fissures — rover passes right through)
     cracks.forEach((cr) => {
-      c.strokeStyle = '#1b0802';
-      c.lineWidth = 5;
+      c.save();
+      c.strokeStyle = cr.color || '#1b0802';
+      c.lineWidth = cr.width || 4;
+      c.lineCap = 'round';
+      c.lineJoin = 'round';
       c.beginPath();
       c.moveTo(cr.x, cr.y);
-      for (let j = 0; j < cr.jaggedPts.length; j += 2) {
-        c.lineTo(cr.x + cr.jaggedPts[j], cr.y + (cr.len / 3) * (j / 2 + 1));
+      if (cr.pts && cr.pts.length) {
+        cr.pts.forEach((pt) => {
+          c.lineTo(cr.x + pt.dx, cr.y + pt.dy);
+        });
+      } else {
+        c.lineTo(cr.x, cr.y + cr.len);
       }
-      c.lineTo(cr.x, cr.y + cr.len);
       c.stroke();
 
-      // Warning hazard boundary indicator along crack
-      c.strokeStyle = 'rgba(255, 152, 0, 0.45)';
-      c.lineWidth = 1.5;
-      c.setLineDash([6, 6]);
-      c.beginPath();
-      c.moveTo(cr.x + (cr.side === 'left' ? 14 : -14), cr.y);
-      c.lineTo(cr.x + (cr.side === 'left' ? 14 : -14), cr.y + cr.len);
-      c.stroke();
-      c.setLineDash([]);
-    });
-
-    // 4. Draw Rocks / Boulders
-    rocks.forEach((rk) => {
-      c.save();
-      c.translate(rk.x, rk.y);
-      c.rotate(rk.rot);
-      // Boulder shadow
-      c.fillStyle = '#261007';
-      c.beginPath();
-      c.ellipse(3, 4, rk.r, rk.r * 0.8, 0, 0, Math.PI * 2);
-      c.fill();
-      // Boulder body
-      c.fillStyle = rk.color;
-      c.beginPath();
-      c.arc(0, 0, rk.r, 0, Math.PI * 2);
-      c.fill();
-      c.strokeStyle = '#8d6e63';
-      c.lineWidth = 2;
+      // Subtle edge highlight
+      c.strokeStyle = 'rgba(140, 50, 25, 0.4)';
+      c.lineWidth = 1;
       c.stroke();
       c.restore();
     });
 
+    // 4. Draw Rocks using Rock sprites.png
+    rocks.forEach((rk) => {
+      c.save();
+      c.translate(rk.x, rk.y);
+      c.rotate(rk.rot);
+
+      // Boulder ground shadow
+      c.fillStyle = 'rgba(25, 8, 4, 0.55)';
+      c.beginPath();
+      c.ellipse(2, 5, rk.r * 1.05, rk.r * 0.75, 0, 0, Math.PI * 2);
+      c.fill();
+
+      if (rockImgReady && rk.sprite) {
+        const sp = rk.sprite;
+        const drawW = rk.r * 2.3;
+        const drawH = drawW * (sp.sh / sp.sw);
+        c.drawImage(rockImg, sp.sx, sp.sy, sp.sw, sp.sh, -drawW / 2, -drawH / 2, drawW, drawH);
+      } else {
+        c.fillStyle = '#4e342e';
+        c.beginPath();
+        c.arc(0, 0, rk.r, 0, Math.PI * 2);
+        c.fill();
+        c.strokeStyle = '#6d4c41';
+        c.lineWidth = 2;
+        c.stroke();
+      }
+      c.restore();
+    });
+
+    const currentRoverY = ROVER_FIXED_Y + rover.bounceOffset + (rover.shudder > 0 ? (Math.random() - 0.5) * rover.shudder : 0);
+
     // 5. Draw Headlight Beams casting forward from rover
     c.save();
-    const beamGrad = c.createLinearGradient(rover.x, rover.y, rover.x, rover.y - 180);
+    const beamGrad = c.createLinearGradient(rover.x, currentRoverY, rover.x, currentRoverY - 180);
     beamGrad.addColorStop(0, 'rgba(255, 238, 150, 0.45)');
     beamGrad.addColorStop(1, 'rgba(255, 238, 150, 0)');
     c.fillStyle = beamGrad;
     c.beginPath();
-    c.moveTo(rover.x - 14, rover.y - 20);
-    c.lineTo(rover.x - 55, rover.y - 180);
-    c.lineTo(rover.x + 55, rover.y - 180);
-    c.lineTo(rover.x + 14, rover.y - 20);
+    c.moveTo(rover.x - 14, currentRoverY - 20);
+    c.lineTo(rover.x - 55, currentRoverY - 180);
+    c.lineTo(rover.x + 55, currentRoverY - 180);
+    c.lineTo(rover.x + 14, currentRoverY - 20);
     c.fill();
     c.restore();
 
-    // 6. Draw Rover (Top-Down Abstracted Space Rover)
-    drawRover(c, rover.x, rover.y);
+    // 6. Draw Rover (with bounce offset & shudder from rock impacts)
+    drawRover(c, rover.x, currentRoverY);
 
     // 7. Draw Dust / Spark Particles
     dustParticles.forEach((p) => {
@@ -646,184 +713,97 @@ export async function mountCliffClimb(container, opts = {}) {
     c.restore();
   }
 
-  // --- ARRIVAL CUTSCENE: ROVER PARKS & PLAYER STEPS OUT ---
+  // --- ARRIVAL CUTSCENE: OCCURS ON CLICK ---
   function triggerArrivalCutscene(resolve) {
     window.removeEventListener('keydown', onKeydown);
     window.removeEventListener('keyup', onKeyup);
     canvas.removeEventListener('pointermove', onPointerMove);
 
-    // Cutscene state
-    let cutsceneTime = 0;
-    const cutsceneDuration = 4.2; // 4.2 seconds
-    let astroX = rover.x;
-    let astroY = rover.y - 12;
-    const footprints = [];
+    // Rover comes to a parked stop at overlook
+    scrollSpeed = 0;
+    renderCanvas();
 
-    playBeep(320, 0.3, 'sine');
-    setTimeout(() => playBeep(640, 0.4, 'sine'), 250);
+    // Create interactive click overlay over canvas
+    const clickOverlay = document.createElement('div');
+    clickOverlay.id = 'arrival-click-overlay';
+    clickOverlay.style.cssText = `
+      position: absolute; inset: 0; z-index: 40;
+      background: rgba(5, 12, 22, 0.78);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      cursor: pointer; animation: fade-in .3s ease-out;
+      border-radius: 10px; padding: 20px;
+    `;
+    clickOverlay.innerHTML = `
+      <div style="font-family:ui-monospace,monospace; font-size:1.2rem; color:#ffd54f; font-weight:800; margin-bottom:10px; letter-spacing:.05em; text-align:center;">
+        🏁 JEZERO CLIFF OVERLOOK REACHED
+      </div>
+      <div style="color:#80cbc4; font-family:system-ui,sans-serif; font-size:.92rem; margin-bottom:18px; text-align:center; max-width:440px;">
+        Rover transmission locked in park. Atmospheric seal verified. Ready for surface EVA.
+      </div>
+      <button id="btn-egress-click" style="
+        background: linear-gradient(135deg, #00897b, #004d40);
+        border: 2px solid #00e5ff;
+        color: #ffffff; border-radius: 24px;
+        padding: 12px 28px; font-family: ui-monospace, monospace;
+        font-size: 1rem; font-weight: 700; cursor: pointer;
+        box-shadow: 0 0 20px rgba(0, 229, 255, 0.45);
+        transition: transform .15s, background .2s;
+      ">
+        👉 CLICK TO STEP OUT & SURVEY OVERLOOK
+      </button>
+      <div style="margin-top:10px; font-family:monospace; font-size:.75rem; color:#4dd0e1; opacity:.8;">
+        (Click anywhere to commence surface egress)
+      </div>
+    `;
 
-    function cutsceneLoop(now) {
-      const dt = Math.min(0.08, (now - lastTime) / 1000);
-      lastTime = now;
-      cutsceneTime += dt;
+    canvas.parentElement.appendChild(clickOverlay);
 
-      // Decelerate scrolling to 0
-      scrollSpeed = Math.max(0, scrollSpeed - (400 * dt));
-      terrainOffset = (terrainOffset + scrollSpeed * dt) % 80;
+    let cutsceneStarted = false;
+    function startEgressCutscene() {
+      if (cutsceneStarted) return;
+      cutsceneStarted = true;
+      clickOverlay.remove();
 
-      // Render base scene
-      renderCanvas();
-
-      const c = ctx;
-
-      // Draw footprints left on Mars regolith
-      footprints.forEach((fp) => {
-        c.fillStyle = '#6d2e18';
-        c.beginPath();
-        c.ellipse(fp.x, fp.y, 3, 5, fp.rot || 0, 0, Math.PI * 2);
-        c.fill();
-      });
-
-      // After rover stops completely, astronaut emerges and steps out
-      if (cutsceneTime > 1.2) {
-        const walkDt = dt * 26;
-        astroY -= walkDt; // steps forward toward overlook
-
-        if (Math.floor(cutsceneTime * 6) % 2 === 0) {
-          if (footprints.length === 0 || Math.hypot(footprints[footprints.length - 1].x - astroX, footprints[footprints.length - 1].y - astroY) > 8) {
-            footprints.push({ x: astroX + (footprints.length % 2 === 0 ? -4 : 4), y: astroY + 8 });
-          }
-        }
-
-        // Draw Astronaut in EVA suit (Top-Down view)
-        c.save();
-        c.translate(astroX, astroY);
-
-        // EVA backpack (life support PLSS)
-        c.fillStyle = '#cfd8dc';
-        c.fillRect(-8, 3, 16, 7);
-
-        // EVA suit shoulders/body (White)
-        c.fillStyle = '#ffffff';
-        c.beginPath();
-        c.ellipse(0, 0, 9, 8, 0, 0, Math.PI * 2);
-        c.fill();
-        c.strokeStyle = '#90a4ae';
-        c.lineWidth = 1;
-        c.stroke();
-
-        // Helmet & Gold Visor
-        c.fillStyle = '#ffd54f';
-        c.beginPath();
-        c.ellipse(0, -3, 6, 4, 0, 0, Math.PI * 2);
-        c.fill();
-        c.strokeStyle = '#b78103';
-        c.lineWidth = 1;
-        c.stroke();
-
-        c.restore();
-      }
-
-      // Cutscene Overlook HUD Banner
-      c.fillStyle = 'rgba(5, 11, 20, 0.9)';
-      c.fillRect(W / 2 - 250, 30, 500, 56);
-      c.strokeStyle = '#00bcd4';
-      c.lineWidth = 2;
-      c.strokeRect(W / 2 - 250, 30, 500, 56);
-
-      c.textAlign = 'center';
-      c.fillStyle = '#00e5ff';
-      c.font = 'bold 16px ui-monospace, monospace';
-      c.fillText('🏁 JEZERO CLIFF OVERLOOK REACHED', W / 2, 54);
-
-      c.fillStyle = '#7dff9a';
-      c.font = '13px ui-monospace, monospace';
-      c.fillText('Rover Parked • Pressurization Nominal • Player Ingressing Surface', W / 2, 73);
-
-      if (cutsceneTime < cutsceneDuration) {
-        requestAnimationFrame(cutsceneLoop);
-      } else {
+      // If secret skip active, complete immediately
+      if (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE) {
         cancelAnimationFrame(animId);
         resolve({
           survived: battery > 0,
           finalBattery: Math.round(battery),
           hitsTaken,
         });
+        return;
       }
-    }
 
-    requestAnimationFrame(cutsceneLoop);
-  }
+      // Cutscene animation: astronaut steps out leaving footprints
+      let cutsceneTime = 0;
+      const cutsceneDuration = 2.6; // 2.6 seconds
+      let astroX = rover.x;
+      let astroY = rover.y - 12;
+      const footprints = [];
 
-  // --- FAILURE CUTSCENE: ROVER STALLS ON CLIFF & EMERGENCY EVA COMMENCES ---
-  function triggerFailureCutscene(resolve) {
-    window.removeEventListener('keydown', onKeydown);
-    window.removeEventListener('keyup', onKeyup);
-    canvas.removeEventListener('pointermove', onPointerMove);
+      playBeep(320, 0.3, 'sine');
+      setTimeout(() => playBeep(640, 0.4, 'sine'), 250);
 
-    let cutsceneTime = 0;
-    const cutsceneDuration = 4.2;
-    let astroX = rover.x;
-    let astroY = rover.y - 12;
-    const footprints = [];
-    const smokePuffs = [];
+      function cutsceneLoop(now) {
+        const dt = Math.min(0.08, (now - lastTime) / 1000);
+        lastTime = now;
+        cutsceneTime += dt;
 
-    playBeep(180, 0.4, 'sawtooth');
-    setTimeout(() => playBeep(110, 0.5, 'triangle'), 300);
+        renderCanvas();
+        const c = ctx;
 
-    function failLoop(now) {
-      const dt = Math.min(0.08, (now - lastTime) / 1000);
-      lastTime = now;
-      cutsceneTime += dt;
-
-      // Rapidly grind to a halt
-      scrollSpeed = Math.max(0, scrollSpeed - (550 * dt));
-      terrainOffset = (terrainOffset + scrollSpeed * dt) % 80;
-
-      // Billow smoke from dead battery unit
-      if (cutsceneTime < 3.2 && Math.random() < 0.5) {
-        smokePuffs.push({
-          x: rover.x + (Math.random() - 0.5) * 20,
-          y: rover.y - 18,
-          vx: (Math.random() - 0.5) * 35,
-          vy: -Math.random() * 50 - 20,
-          r: Math.random() * 6 + 4,
-          alpha: 0.75,
+        // Draw footprints left on Mars regolith
+        footprints.forEach((fp) => {
+          c.fillStyle = '#6d2e18';
+          c.beginPath();
+          c.ellipse(fp.x, fp.y, 3, 5, fp.rot || 0, 0, Math.PI * 2);
+          c.fill();
         });
-      }
 
-      // Update smoke
-      for (let i = smokePuffs.length - 1; i >= 0; i--) {
-        const s = smokePuffs[i];
-        s.x += s.vx * dt;
-        s.y += s.vy * dt;
-        s.alpha -= dt * 0.38;
-        s.r += dt * 7;
-        if (s.alpha <= 0) smokePuffs.splice(i, 1);
-      }
-
-      renderCanvas();
-      const c = ctx;
-
-      // Render smoke particles
-      smokePuffs.forEach((s) => {
-        c.fillStyle = `rgba(180, 150, 140, ${Math.max(0, s.alpha)})`;
-        c.beginPath();
-        c.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        c.fill();
-      });
-
-      // Render footprints
-      footprints.forEach((fp) => {
-        c.fillStyle = '#6d2e18';
-        c.beginPath();
-        c.ellipse(fp.x, fp.y, 3, 5, 0, 0, Math.PI * 2);
-        c.fill();
-      });
-
-      // Astronaut emerges to begin emergency manual winch & inspection
-      if (cutsceneTime > 1.2) {
-        const walkDt = dt * 22;
+        // Astronaut steps out and walks forward toward overlook
+        const walkDt = dt * 28;
         astroY -= walkDt;
 
         if (Math.floor(cutsceneTime * 6) % 2 === 0) {
@@ -832,7 +812,7 @@ export async function mountCliffClimb(container, opts = {}) {
           }
         }
 
-        // Astronaut in EVA suit
+        // Draw Astronaut in EVA suit
         c.save();
         c.translate(astroX, astroY);
         c.fillStyle = '#cfd8dc';
@@ -844,44 +824,131 @@ export async function mountCliffClimb(container, opts = {}) {
         c.strokeStyle = '#90a4ae';
         c.lineWidth = 1;
         c.stroke();
-        c.fillStyle = '#ffab40';
+        c.fillStyle = '#ffd54f';
         c.beginPath();
         c.ellipse(0, -3, 6, 4, 0, 0, Math.PI * 2);
         c.fill();
+        c.strokeStyle = '#b78103';
+        c.lineWidth = 1;
         c.stroke();
         c.restore();
+
+        // Cutscene Overlook HUD Banner
+        c.fillStyle = 'rgba(5, 11, 20, 0.9)';
+        c.fillRect(W / 2 - 250, 30, 500, 56);
+        c.strokeStyle = '#00bcd4';
+        c.lineWidth = 2;
+        c.strokeRect(W / 2 - 250, 30, 500, 56);
+
+        c.textAlign = 'center';
+        c.fillStyle = '#00e5ff';
+        c.font = 'bold 16px ui-monospace, monospace';
+        c.fillText('🏁 JEZERO CLIFF OVERLOOK REACHED', W / 2, 54);
+
+        c.fillStyle = '#7dff9a';
+        c.font = '13px ui-monospace, monospace';
+        c.fillText('Pressurization Nominal • Player Ingressing Surface', W / 2, 73);
+
+        if (cutsceneTime < cutsceneDuration) {
+          requestAnimationFrame(cutsceneLoop);
+        } else {
+          cancelAnimationFrame(animId);
+          resolve({
+            survived: battery > 0,
+            finalBattery: Math.round(battery),
+            hitsTaken,
+          });
+        }
       }
 
-      // Failure HUD Alert Banner
-      c.fillStyle = 'rgba(25, 4, 4, 0.94)';
-      c.fillRect(W / 2 - 250, 26, 500, 64);
-      c.strokeStyle = '#f44336';
-      c.lineWidth = 2;
-      c.strokeRect(W / 2 - 250, 26, 500, 64);
-
-      c.textAlign = 'center';
-      c.fillStyle = '#ff5252';
-      c.font = 'bold 15px ui-monospace, monospace';
-      c.fillText('⚠️ ROVER POWER DRAINED — CRITICAL STALL', W / 2, 50);
-
-      c.fillStyle = '#ffccbc';
-      c.font = '12px ui-monospace, monospace';
-      c.fillText('Emergency Manual Winch Required • Life Support Penalty Incurred', W / 2, 70);
-
-      if (cutsceneTime < cutsceneDuration) {
-        requestAnimationFrame(failLoop);
-      } else {
-        cancelAnimationFrame(animId);
-        resolve({
-          survived: false,
-          finalBattery: 0,
-          hitsTaken,
-          penaltyApplied: true,
-        });
-      }
+      requestAnimationFrame(cutsceneLoop);
     }
 
-    requestAnimationFrame(failLoop);
+    // Support instant skip via Konami code
+    window.__skipActiveCutscene = () => {
+      startEgressCutscene();
+      cancelAnimationFrame(animId);
+      resolve({
+        survived: battery > 0,
+        finalBattery: Math.round(battery),
+        hitsTaken,
+      });
+    };
+
+    clickOverlay.onclick = startEgressCutscene;
+    canvas.onclick = startEgressCutscene;
+
+    if (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE) {
+      startEgressCutscene();
+    }
+  }
+
+  // --- FAILURE CUTSCENE: OCCURS ON CLICK ---
+  function triggerFailureCutscene(resolve) {
+    failureTriggered = true;
+    window.removeEventListener('keydown', onKeydown);
+    window.removeEventListener('keyup', onKeyup);
+    canvas.removeEventListener('pointermove', onPointerMove);
+
+    scrollSpeed = 0;
+    renderCanvas();
+
+    const failOverlay = document.createElement('div');
+    failOverlay.id = 'fail-click-overlay';
+    failOverlay.style.cssText = `
+      position: absolute; inset: 0; z-index: 40;
+      background: rgba(25, 4, 4, 0.82);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      cursor: pointer; animation: fade-in .3s ease-out;
+      border-radius: 10px; padding: 20px;
+    `;
+    failOverlay.innerHTML = `
+      <div style="font-family:ui-monospace,monospace; font-size:1.2rem; color:#ff5252; font-weight:800; margin-bottom:10px; letter-spacing:.05em; text-align:center;">
+        ⚠️ ROVER POWER DRAINED — CRITICAL STALL
+      </div>
+      <div style="color:#ffccbc; font-family:system-ui,sans-serif; font-size:.92rem; margin-bottom:18px; text-align:center; max-width:440px;">
+        Battery depleted after terrain collisions. Manual emergency winch recovery required.
+      </div>
+      <button id="btn-recovery-click" style="
+        background: linear-gradient(135deg, #b71c1c, #7f0000);
+        border: 2px solid #ff5252;
+        color: #ffffff; border-radius: 24px;
+        padding: 12px 28px; font-family: ui-monospace, monospace;
+        font-size: 1rem; font-weight: 700; cursor: pointer;
+        box-shadow: 0 0 20px rgba(255, 82, 82, 0.45);
+        transition: transform .15s, background .2s;
+      ">
+        👉 CLICK FOR EMERGENCY WINCH RECOVERY
+      </button>
+      <div style="margin-top:10px; font-family:monospace; font-size:.75rem; color:#ff8a80; opacity:.8;">
+        (Click anywhere to advance to next section)
+      </div>
+    `;
+
+    canvas.parentElement.appendChild(failOverlay);
+
+    let failStarted = false;
+    function startRecovery() {
+      if (failStarted) return;
+      failStarted = true;
+      failOverlay.remove();
+
+      cancelAnimationFrame(animId);
+      resolve({
+        survived: false,
+        finalBattery: 0,
+        hitsTaken,
+        penaltyApplied: true,
+      });
+    }
+
+    failOverlay.onclick = startRecovery;
+    canvas.onclick = startRecovery;
+
+    if (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE) {
+      startRecovery();
+    }
   }
 
   const finalResult = await resultPromise;

@@ -1,11 +1,14 @@
 // main.js — Main Game Runner & Sequence Controller
 import { GameState } from './shared/game-state.js';
 import { initializeOutpostTelemetry } from './shared/nasa-api.js';
+import { initSecretKonamiCode } from './shared/konami.js';
 import { mountSol0 } from './sols/sol-0.js';
 import { mountSol1 } from './sols/sol-1.js';
 import { mountSol2 } from './sols/sol-2.js';
 
 async function runGame() {
+  // Initialize secret skip code: UP, UP, DOWN, LEFT, RIGHT, UP
+  initSecretKonamiCode();
   const app = document.getElementById('app');
   const state = GameState.create();
 
