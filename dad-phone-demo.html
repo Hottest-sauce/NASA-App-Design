@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dad Phone Demo</title>
+<style>
+:root{--bg:#f6efe9;--fg:#2a1a14;--card:#fff;--line:#d9c3b4;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#120a08;--fg:#f3e6dc;--card:#24150f;--line:#5a3a2c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#120a08;--fg:#f3e6dc;--card:#24150f;--line:#5a3a2c;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+.w{max-width:640px;margin:0 auto;padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:10px 0}
+button,input{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 12px}
+button{cursor:pointer;margin:3px 3px 3px 0}input[type=text]{width:100%;margin-bottom:6px}
+code{background:var(--line);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body><div class="w">
+<h1>📱 Dad Phone</h1>
+<div class="card">Press a button. The phone icon buzzes in the top-right corner. Click it, then read. While text types, click twice to skip. After the last line, click once to hang up.</div>
+<div class="card"><b>Scripted calls</b><br>
+<button id="b1">📞 Dad calls (solar tip)</button>
+<button id="b2">🔬 Mom + science image</button>
+<button id="b3">🧮 Live values</button></div>
+<div class="card"><b>Edit the text on the fly</b>
+<input type="text" id="txt" value="Hey kiddo! Water is at {water} kg. Keep an eye on it.">
+<label><input type="checkbox" id="one"> single-click skip</label> <label><input type="checkbox" id="snd"> blips</label><br>
+<button id="b4">Ring with this text</button> <button id="b5">Say it right now (no ring)</button></div>
+<div class="card"><small>From any file: <code>DadPhone.call({ character:'dad', lines:[…] })</code></small></div>
+</div>
+<script>
+/* dad-phone.js: a vibrating phone icon that opens a sci-fi tablet where characters "talk".
+ *
+ * USAGE (from any file):
+ *   import DadPhone from './dad-phone.js';        // or use window.DadPhone from a normal <script>
+ *   DadPhone.call({ lines: ['Hi kiddo!', 'Line two.'] });                       // phone buzzes, click it to listen
+ *   DadPhone.call({ character: 'mom', lines: [...], onDone: () => {} });         // another character
+ *   DadPhone.call({ lines: [{ text:'Look!', image:'sun.png', caption:'Sun angle', who:'dad' }] });  // image replaces the portrait
+ *   DadPhone.call({ lines: ['Water is {water} kg'], vars: { water: 3.72 } });     // {tokens} filled at call time
+ *   DadPhone.call({ lines: [() => `Power: ${game.power}`] });                     // functions are read when shown
+ *   DadPhone.defineScript('solar', [...]); DadPhone.call({ script: 'solar' });    // reusable named scripts
+ *   DadPhone.registerCharacter('dad', { name:'Papa', avatar:'dad.png', color:'#ffb27a', speed:30 });  // edit/add characters
+ *   DadPhone.say('Quick tip!')                                                    // no ring, opens right away
+ * call() returns a Promise that resolves when the player closes the tablet.
+ * Options: character, lines, script, vars, ring(true), speed(ms/char), skipClicks(2), sound(false), onLine(i,line), onDone().
+ * Click rules: while text types, `skipClicks` clicks finish the line; after that a click goes to the next line;
+ * after the last line, one click hangs up and removes everything. (Enter/Space/→ also advance, Esc closes.)
+ */
+const DAD_SVG = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="52" r="42" fill="#e9edf5" stroke="#9aa6bd" stroke-width="3"/>' +
+  '<circle cx="50" cy="52" r="32" fill="#14233d"/><circle cx="50" cy="54" r="25" fill="#f1c27d"/><circle cx="41" cy="48" r="3" fill="#222"/><circle cx="59" cy="48" r="3" fill="#222"/>' +
+  '<path d="M30 61Q39 51 50 59Q61 51 70 61Q61 67 50 63Q39 67 30 61Z" fill="#4a2b14"/><path d="M44 71Q50 75 56 71" stroke="#7a3b2a" stroke-width="2.5" fill="none" stroke-linecap="round"/>' +
+  '<path d="M26 40Q50 14 74 40" stroke="#ffffff66" stroke-width="3" fill="none"/></svg>');
+
+const defaults = { speed: 28, skipClicks: 2, ring: true, sound: false };
+const characters = {
+  dad: { name: 'Dad', title: 'Mission Commander', avatar: '👩‍🚀', color: '#ffb27a', speed: 28, pitch: 140 },
+  mom: { name: 'Mom', title: 'Flight Engineer', avatar: '👩‍🚀', color: '#ff8fd1', speed: 24, pitch: 260 },
+};
+const scripts = {};
+const queue = [];
+let host, els, session = null, audio;
+
+const CSS = `
+:host{all:initial}*{box-sizing:border-box}[hidden]{display:none!important}
+.phone{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));width:58px;height:58px;border-radius:50%;
+ border:2px solid var(--accent);background:#0a1722;color:var(--accent);cursor:pointer;display:grid;place-items:center;z-index:2147483000;
+ box-shadow:0 0 16px color-mix(in srgb,var(--accent) 55%,transparent);animation:buzz 1.6s infinite}
+.phone svg{width:28px;height:28px}
+.phone::after{content:'';position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--accent);opacity:0;animation:ring 1.6s infinite}
+.tag{position:absolute;right:68px;top:50%;transform:translateY(-50%);white-space:nowrap;background:#0a1722;color:#d9f6ff;border:1px solid var(--accent);border-radius:8px;padding:3px 9px;font:600 12px system-ui,sans-serif}
+@keyframes buzz{0%,50%,80%,100%{transform:none}54%{transform:translate(-3px) rotate(-12deg)}58%{transform:translate(3px) rotate(12deg)}62%{transform:translate(-3px) rotate(-10deg)}66%{transform:translate(3px) rotate(10deg)}70%{transform:translate(-2px) rotate(-6deg)}74%{transform:translate(2px) rotate(6deg)}}
+@keyframes ring{0%,50%{opacity:0;transform:scale(.9)}60%{opacity:.8}100%{opacity:0;transform:scale(1.35)}}
+.tablet{position:fixed;left:50%;bottom:calc(12px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(700px,calc(100vw - 24px));z-index:2147483001;
+ cursor:pointer;user-select:none;-webkit-user-select:none;color:#d9f6ff;font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;animation:pop .28s cubic-bezier(.2,1.3,.4,1)}
+@keyframes pop{from{opacity:0;transform:translateX(-50%) translateY(30px) scale(.92)}}
+.bezel{position:relative;background:linear-gradient(145deg,#2a3242,#10141c);border:1px solid #4a566c;border-radius:22px;padding:12px;box-shadow:0 12px 40px #000a}
+.cam{position:absolute;left:50%;top:4px;width:6px;height:6px;border-radius:50%;background:#0c1118;box-shadow:0 0 0 1.5px #3b465a}
+.screen{position:relative;overflow:hidden;background:#06101a;border:1px solid color-mix(in srgb,var(--accent) 60%,#000);border-radius:12px}
+.screen::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,#ffffff09 0 1px,transparent 1px 3px)}
+.bar{display:flex;justify-content:space-between;gap:8px;padding:6px 12px;background:#0d2230;color:var(--accent);font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.12em}
+.live{animation:blink 1.2s steps(2) infinite}@keyframes blink{50%{opacity:.25}}
+.body{display:flex;gap:14px;padding:14px}
+.media{flex:0 0 clamp(84px,18vw,128px);text-align:center}.sci .media{flex-basis:clamp(130px,32vw,240px)}
+.avatar{aspect-ratio:1;display:grid;place-items:center;overflow:hidden;border:2px solid var(--accent);border-radius:12px;background:radial-gradient(#12354a,#06101a);font-size:clamp(46px,10vw,76px);line-height:1}
+.sci .avatar{aspect-ratio:4/3}.avatar img{width:100%;height:100%;object-fit:contain}
+.talking .avatar{animation:talk .35s ease-in-out infinite alternate}@keyframes talk{to{transform:translateY(-3px) scale(1.03)}}
+.cap{margin-top:4px;font-size:11px;opacity:.8}
+.chat{flex:1;min-width:0}
+.name{color:var(--accent);font:700 13px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase}.name small{opacity:.65;font-weight:400;margin-left:6px}
+.text{min-height:4.5em;margin-top:4px;white-space:pre-wrap;font-size:clamp(14px,2.6vw,17px)}
+.typing .text::after{content:'▌';color:var(--accent);animation:blink .7s steps(2) infinite}
+.foot{padding:0 14px 8px;text-align:right;font:11px ui-monospace,Menlo,monospace;opacity:.75}
+.end .foot{color:var(--accent);opacity:1;animation:blink 1.2s steps(2) infinite}
+@media (prefers-reduced-motion:reduce){.phone,.phone::after,.tablet,.talking .avatar,.live{animation:none}}`;
+
+const HTML = `<button class="phone" aria-label="Incoming call"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="7" y="2" width="10" height="20" rx="2.5"/><path d="M10 5h4"/><circle cx="12" cy="18.5" r="1" fill="currentColor"/></svg><span class="tag"></span></button>
+<div class="tablet" role="dialog" aria-live="polite" hidden><div class="bezel"><i class="cam"></i><div class="screen">
+<div class="bar"><span><span class="live">●</span> LIVE LINK</span><span class="step"></span></div>
+<div class="body"><div class="media"><div class="avatar"></div><div class="cap"></div></div>
+<div class="chat"><div class="name"></div><div class="text"></div></div></div><div class="foot"></div></div></div></div>`;
+
+const isImg = (s) => typeof s === 'string' && /^(data:|https?:|\/|\.{1,2}\/)|\.(png|jpe?g|gif|svg|webp)$/i.test(s);
+const charOf = (line) => ({ name: line.who, avatar: '🧑‍🚀', color: '#6fe7ff', ...characters[line.who], ...(line.name && { name: line.name }), ...(line.avatar && { avatar: line.avatar }), ...(line.color && { color: line.color }) });
+
+function ensureDom() {
+  if (host) return;
+  host = document.createElement('div'); host.id = 'dad-phone-root';
+  const root = host.attachShadow({ mode: 'open' });
+  root.innerHTML = `<style>${CSS}</style>${HTML}`;
+  document.body.appendChild(host);
+  const q = (s) => root.querySelector(s);
+  els = { phone: q('.phone'), tag: q('.tag'), tablet: q('.tablet'), avatar: q('.avatar'), cap: q('.cap'), name: q('.name'), text: q('.text'), foot: q('.foot'), step: q('.step') };
+  els.phone.onclick = open; els.tablet.onclick = advance;
+  addEventListener('keydown', (e) => {                       // capture phase: stop other games reacting while the tablet is open
+    if (!session || !session.open) return;
+    if (e.key === 'Escape') { e.stopImmediatePropagation(); close(); }
+    else if ([' ', 'Enter', 'ArrowRight'].includes(e.key)) { e.preventDefault(); e.stopImmediatePropagation(); advance(); }
+  }, true);
+}
+
+function next() {
+  const job = queue.shift(); if (!job) return;
+  ensureDom();
+  const opts = { ...defaults, ...job.opts };
+  const raw = opts.lines || scripts[opts.script];
+  if (!raw || !raw.length) { console.warn('[DadPhone] nothing to say', job.opts); job.resolve(); return next(); }
+  const lines = raw.map((l) => { const o = (l && typeof l === 'object') ? l : { text: l }; return { ...o, who: o.who || opts.character || 'dad' }; });
+  session = { opts, lines, i: -1, open: false, typing: false, clicks: 0, resolve: job.resolve };
+  const c = charOf(lines[0]);
+  els.phone.style.setProperty('--accent', c.color); els.tag.textContent = `${c.name} is calling…`;
+  if (opts.ring === false) return open();
+  els.phone.hidden = false;
+  try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) { /* needs a user gesture */ }
+}
+
+function open() {
+  if (!session || session.open) return;
+  session.open = true; els.phone.hidden = true; els.tablet.hidden = false; nextLine();
+}
+
+function nextLine() {
+  const s = session; s.i++;
+  const line = s.lines[s.i], c = charOf(line), img = line.image;
+  els.tablet.style.setProperty('--accent', c.color);
+  els.tablet.classList.toggle('sci', !!img); els.tablet.classList.remove('end');
+  els.name.innerHTML = ''; els.name.append(c.name); if (c.title) { const t = document.createElement('small'); t.textContent = c.title; els.name.append(t); }
+  els.step.textContent = `${s.i + 1}/${s.lines.length}`;
+  const src = img || c.avatar; els.avatar.innerHTML = '';
+  if (isImg(src)) { const im = new Image(); im.src = src; im.alt = img ? (line.caption || 'Science diagram') : c.name; els.avatar.append(im); } else els.avatar.textContent = src;
+  els.cap.textContent = img ? (line.caption || '') : '';
+  let text = typeof line.text === 'function' ? line.text() : String(line.text ?? '');
+  text = text.replace(/\{(\w+)\}/g, (m, k) => (s.opts.vars && k in s.opts.vars ? s.opts.vars[k] : m));
+  s.full = text; s.clicks = 0;
+  if (s.opts.onLine) s.opts.onLine(s.i, line);
+  type(text, line.speed ?? c.speed ?? s.opts.speed, c.pitch ?? 200);
+}
+
+// Types one character at a time with human-ish timing: pauses after sentences and commas, small random jitter.
+function type(text, speed, pitch) {
+  const s = session, chars = [...text]; let k = 0;
+  s.typing = true; els.tablet.classList.add('typing', 'talking'); hint();
+  if (!speed || matchMedia('(prefers-reduced-motion:reduce)').matches) return finishTyping();
+  (function tick() {
+    if (!s.typing) return;
+    els.text.textContent = chars.slice(0, ++k).join('');
+    if (chars[k - 1].trim()) blip(pitch);
+    if (k >= chars.length) return finishTyping();
+    const end = chars[k] === ' ', ch = chars[k - 1];
+    const pause = end && /[.!?]/.test(ch) ? 9 : end && /[,;:]/.test(ch) ? 4 : 1;
+    s.timer = setTimeout(tick, speed * pause * (0.7 + Math.random() * 0.6));
+  })();
+}
+
+function finishTyping() {
+  const s = session; clearTimeout(s.timer); s.typing = false;
+  els.text.textContent = s.full; els.tablet.classList.remove('typing', 'talking');
+  if (s.i === s.lines.length - 1) els.tablet.classList.add('end');
+  hint();
+}
+
+function hint() {
+  const s = session, last = s.i === s.lines.length - 1;
+  els.foot.textContent = s.typing ? `Tap ${s.opts.skipClicks}× to skip` : last ? 'Tap to hang up ✕' : 'Tap to continue ▸';
+}
+
+function advance() {
+  const s = session; if (!s || !s.open) return;
+  if (s.typing) { if (++s.clicks >= s.opts.skipClicks) finishTyping(); }
+  else if (s.i >= s.lines.length - 1) close();
+  else nextLine();
+}
+
+function close() {
+  const s = session; if (!s) return;
+  clearTimeout(s.timer); session = null;
+  els.tablet.hidden = true; els.phone.hidden = true;
+  try { s.opts.onDone && s.opts.onDone(); } catch (e) { console.error(e); }
+  s.resolve(); next();
+}
+
+function blip(pitch) {
+  if (!session.opts.sound) return;
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audio.createOscillator(), g = audio.createGain();
+    o.type = 'square'; o.frequency.value = pitch * (0.9 + Math.random() * 0.3); g.gain.value = 0.02;
+    o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + 0.04);
+  } catch (e) { /* audio blocked */ }
+}
+
+const DadPhone = {
+  call: (opts) => new Promise((resolve) => { queue.push({ opts, resolve }); if (!session) next(); }),
+  say: (text, opts = {}) => DadPhone.call({ ring: false, ...opts, lines: [text] }),
+  close,
+  registerCharacter: (id, data) => { characters[id] = { ...characters[id], ...data }; },
+  defineScript: (id, lines) => { scripts[id] = lines; },
+  setDefaults: (d) => Object.assign(defaults, d),
+  get active() { return !!session; },
+};
+if (typeof window !== 'undefined') window.DadPhone = DadPhone;
+
+
+const SCI='data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150"><rect width="200" height="150" fill="#0b1b2b"/><circle cx="160" cy="30" r="14" fill="#ffd24d"/><path d="M148 40L96 82" stroke="#ffd24d" stroke-dasharray="5 4" stroke-width="2"/><g transform="rotate(-35 90 90)"><rect x="55" y="86" width="70" height="8" fill="#2c5bd1" stroke="#8fb4ff"/></g><path d="M90 88L120 52" stroke="#4cc3ff" stroke-width="3"/><circle cx="120" cy="52" r="4" fill="#4cc3ff"/><path d="M90 92V130" stroke="#889" stroke-width="5"/><text x="12" y="140" fill="#9fd" font-size="11" font-family="sans-serif">arrow meets sun = max power</text></svg>');
+DadPhone.defineScript('solar',[
+ 'Hey kiddo! It’s Dad. Solar panels generate power from the sun, so we need to make sure they get lots of sunlight!',
+ 'Align the solar panels to the sun so we can make more power.',
+ {who:'mom',text:'Watch the green bar. When it goes up, you’re doing great!'}]);
+$=s=>document.querySelector(s);
+$('#b1').onclick=()=>DadPhone.call({script:'solar',sound:$('#snd').checked});
+$('#b2').onclick=()=>DadPhone.call({character:'mom',lines:[
+ {text:'Look at this picture: the blue arrow shows where the panel faces.',image:SCI,caption:'Panel arrow vs. Sun'},
+ {text:'When the arrow points right at the Sun, the panel catches the most light.',image:SCI,caption:'Aligned = more power'}]});
+let power=55;$('#b3').onclick=()=>DadPhone.call({lines:[()=>'Power is at '+power+'% right now.',()=>'After that chat it dropped to '+(power-=5)+'%.']});
+const custom=()=>({lines:[$('#txt').value],vars:{water:3.72},skipClicks:$('#one').checked?1:2,sound:$('#snd').checked});
+$('#b4').onclick=()=>DadPhone.call(custom());$('#b5').onclick=()=>DadPhone.call({...custom(),ring:false});
+</script></body></html>
