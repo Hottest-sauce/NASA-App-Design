@@ -34,7 +34,7 @@ export async function mountSol0(container, state) {
 
         <button class="hab-cam-btn" data-cam="hydro">
           <span class="cam-id">CAM 02</span>
-          <span class="cam-title">🥔 Hydroponics Dome</span>
+          <span class="cam-title">🥔 Plant Watering</span>
           <span class="cam-status" id="status-cam-hydro">Soil Moisture: 38% (Low)</span>
         </button>
 
