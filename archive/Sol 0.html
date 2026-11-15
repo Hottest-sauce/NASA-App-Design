@@ -47,13 +47,21 @@ h2{margin:18px 0 6px;font-size:1.1rem;color:#80cbc4}
     </button>
   </div>
 
-  <div class="outcome hidden" id="outcome-1a">
-    <b>+25% Base Power!</b>
-    <p>The panels lock onto the sun and your batteries begin charging. The habitat hums to life — lights brighten and the water pump kicks on for the potato beds.</p>
+  <!-- Shown after returning from Solar Alignment minigame with a perfect score -->
+  <div class="outcome hidden" id="outcome-1a-perfect">
+    <b>+25% Base Power! ⭐ Perfect Alignment!</b>
+    <p>The panels lock perfectly onto the sun and your batteries charge at maximum capacity. The habitat hums to life — lights brighten and the water pump kicks on for the potato beds.</p>
     <div class="tip"><span>📞 Dad-Phone Tip:</span> "Solar panels make power from sunlight, so pointing them right at the sun charges our batteries faster!"</div>
-    <p style="margin-top:12px"><a href="Solar Alignment.html" style="color:#00e5ff;font-weight:700">▶ Play the Solar Alignment Minigame</a></p>
   </div>
 
+  <!-- Shown after returning with a passing but not perfect score -->
+  <div class="outcome hidden" id="outcome-1a-partial">
+    <b>+5% Base Power</b>
+    <p>The panels are better aligned than auto-mode, but not perfect. The batteries charge slowly — enough to keep basic systems running, but you'll need to be careful with power later.</p>
+    <div class="tip"><span>📞 Dad-Phone Tip:</span> "Good effort! But the closer the panels point at the sun, the more power we get. Every degree counts on Mars!"</div>
+  </div>
+
+  <!-- Shown when Choice 1B is selected -->
   <div class="outcome hidden" id="outcome-1b">
     <b>Base Power stays at 50%.</b>
     <p>The panels stay on auto-mode — they're not perfectly aimed, so power trickles in slowly. Indoor systems may struggle later, but you gain <b>+30 minutes of daylight</b> for your rover trek.</p>
@@ -65,61 +73,76 @@ h2{margin:18px 0 6px;font-size:1.1rem;color:#80cbc4}
 <script type="module">
 import { DadPhone } from './dadphone.js';
 
-// Register a teal narrator — no specific character, just the story voice
+// Register the teal narrator
 DadPhone.registerCharacter('narrator', {
   name: 'Mission Log',
   avatar: '🔴',
-  color: '#00bcd4',   // teal
+  color: '#00bcd4',
   speed: 22,
   pitch: 260,
   wave: 'sine',
   mustache: false
 });
 
-// On load, narrate Act 1 intro using .say (no ring, opens straight away)
-DadPhone.say({
-  from: 'narrator',
-  lines: [
-    'Good morning, astronaut. The sun is rising over Jezero Crater on Mars.',
-    'Your parents left yesterday on a multi-day survey mission. You are on your own at the outpost.',
-    'Before heading out to retrieve Perseverance\'s sample tubes, you must prepare the habitat.',
-    'Your habitat\'s power is dangerously low — and your indoor potato crops are getting thirsty.',
-    'Check the control panel and decide: align the solar panels manually, or rush out early to beat the heat.'
-  ]
-});
+// --- Check if we're returning from the Solar Alignment minigame ---
+const params = new URLSearchParams(window.location.search);
+const afterSolar = params.get('after') === 'solar';
 
-// Wire up the choice buttons
-const choices  = document.getElementById('choices');
-const outcome1a = document.getElementById('outcome-1a');
-const outcome1b = document.getElementById('outcome-1b');
+if (afterSolar) {
+  // Returning from minigame — show the result
+  const powerBonus = parseInt(params.get('powerBonus') || '0', 10);
+  const pct = parseInt(params.get('pct') || '0', 10);
+  const stars = parseInt(params.get('stars') || '0', 10);
 
-document.getElementById('btn-1a').addEventListener('click', async () => {
-  choices.classList.add('hidden');
-  outcome1a.classList.remove('hidden');
+  // Hide choices, show appropriate outcome
+  document.getElementById('choices').classList.add('hidden');
 
-  await DadPhone.say({
+  if (powerBonus >= 25) {
+    document.getElementById('outcome-1a-perfect').classList.remove('hidden');
+    DadPhone.say({
+      from: 'narrator',
+      lines: [
+        'Perfect alignment! The solar panels are locked on and the base is charging at full power.',
+        `+${powerBonus}% Base Power. Score: ${pct}%. ${'⭐'.repeat(stars)}`,
+        'The habitat systems are stable. Time to head out for those sample tubes.'
+      ]
+    });
+  } else {
+    document.getElementById('outcome-1a-partial').classList.remove('hidden');
+    DadPhone.say({
+      from: 'narrator',
+      lines: [
+        'The panels are better than auto-mode, but the alignment wasn\'t perfect.',
+        `+${powerBonus}% Base Power. Score: ${pct}%.`,
+        'It\'ll have to do for now. Time to head out — but watch your power levels.'
+      ]
+    });
+  }
+} else {
+  // Fresh load — narrate the intro
+  DadPhone.say({
     from: 'narrator',
     lines: [
-      'You step up to the solar array controls and begin adjusting the panels toward the rising sun.',
-      'After 30 minutes of careful alignment, the batteries are charging at full capacity.',
-      '+25% Base Power. The habitat systems are stable.'
+      'Good morning, astronaut. The sun is rising over Jezero Crater on Mars.',
+      'Your parents left yesterday on a multi-day survey mission. You are on your own at the outpost.',
+      'Before heading out to retrieve Perseverance\'s sample tubes, you must prepare the habitat.',
+      'Your habitat\'s power is dangerously low — and your indoor potato crops are getting thirsty.',
+      'Check the control panel and decide: align the solar panels manually, or rush out early to beat the heat.'
     ]
   });
+}
 
-  // Then Dad calls with his tip
-  await DadPhone.ring({
-    from: 'dad',
-    lines: [
-      'Hey kiddo! I can see from the telemetry that you got the panels aligned. Nice work!',
-      'Solar panels make power from sunlight, so pointing them right at the sun charges our batteries faster!',
-      'Now head out and grab those Perseverance sample tubes. Be careful out there!'
-    ]
-  });
+// --- Wire up buttons ---
+
+// Choice 1A: Go directly to Solar Alignment minigame
+document.getElementById('btn-1a').addEventListener('click', () => {
+  window.location.href = 'Solar Alignment.html?from=sol0';
 });
 
+// Choice 1B: Stay on this page, show outcome
 document.getElementById('btn-1b').addEventListener('click', async () => {
-  choices.classList.add('hidden');
-  outcome1b.classList.remove('hidden');
+  document.getElementById('choices').classList.add('hidden');
+  document.getElementById('outcome-1b').classList.remove('hidden');
 
   await DadPhone.say({
     from: 'narrator',

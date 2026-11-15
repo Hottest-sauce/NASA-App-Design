@@ -1,0 +1,251 @@
+/* shared/theme.css — common variables and base styles for the entire game */
+:root {
+  --bg: #0d1b2a;
+  --fg: #e0f7fa;
+  --card: #112233;
+  --line: #26574a;
+  --accent: #00bcd4;
+  --accent-warm: #ff9a4d;
+  --success: #22b455;
+  --danger: #b71c1c;
+  --glow-teal: rgba(0, 188, 212, 0.4);
+  box-sizing: border-box;
+}
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.6 system-ui, sans-serif;
+  min-height: 100dvh;
+}
+.app { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+
+/* --- Scene cards --- */
+.scene {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  animation: fade-in .4s ease-out;
+}
+.scene p { margin: 6px 0; }
+
+/* --- Choice buttons --- */
+.choices { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.choice-btn {
+  background: linear-gradient(135deg, #004d40, #00695c);
+  color: #e0f7fa;
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font: 700 1rem/1.4 system-ui, sans-serif;
+  cursor: pointer;
+  text-align: left;
+  transition: background .2s, box-shadow .2s, transform .1s;
+}
+.choice-btn:hover { background: linear-gradient(135deg, #00695c, #00897b); box-shadow: 0 0 18px var(--glow-teal); }
+.choice-btn:active { transform: scale(.98); }
+.choice-btn .label {
+  color: #80cbc4;
+  font-size: .75rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* --- Outcome boxes --- */
+.outcome {
+  background: #0a2e26;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-top: 14px;
+  animation: fade-in .4s ease-out;
+}
+.outcome b { color: #00e5ff; }
+.outcome .tip {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #112a3a;
+  border-left: 3px solid var(--accent-warm);
+  border-radius: 0 8px 8px 0;
+  font-size: .9rem;
+}
+.outcome .tip span { color: var(--accent-warm); font-weight: 700; }
+
+/* --- Typography --- */
+h1 { margin: 0 0 4px; font-size: 1.5rem; color: var(--accent); }
+h2 { margin: 18px 0 6px; font-size: 1.15rem; color: #80cbc4; }
+.subtitle { font-size: .85rem; opacity: .7; margin-bottom: 18px; }
+
+/* --- FNAF-Style Habitat Hub Monitor --- */
+.hab-monitor {
+  background: #050b14;
+  border: 2px solid #1a365d;
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 40px rgba(0,0,0,0.8), 0 0 20px rgba(0, 188, 212, 0.2);
+  margin-bottom: 20px;
+}
+.hab-screen-header {
+  background: linear-gradient(90deg, #0a192f, #112233);
+  padding: 8px 16px;
+  border-bottom: 1px solid #1a365d;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: .78rem;
+  color: #00bcd4;
+}
+.hab-cam-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  padding: 14px;
+  background: #03070d;
+}
+.hab-cam-btn {
+  background: #09131f;
+  border: 1px solid #1f3a56;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  color: #e0f7fa;
+  transition: all .2s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hab-cam-btn:hover, .hab-cam-btn.active {
+  background: #0d233a;
+  border-color: #00bcd4;
+  box-shadow: 0 0 12px var(--glow-teal);
+  transform: translateY(-2px);
+}
+.hab-cam-btn .cam-id {
+  font-family: ui-monospace, monospace;
+  font-size: .7rem;
+  color: #ff9a4d;
+  letter-spacing: .08em;
+}
+.hab-cam-btn .cam-title {
+  font-weight: 700;
+  font-size: .95rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hab-cam-btn .cam-status {
+  font-size: .75rem;
+  opacity: .75;
+}
+.hab-viewscreen {
+  background: radial-gradient(circle at center, #0d2238 0%, #03070d 100%);
+  border: 1px solid #1a365d;
+  border-radius: 10px;
+  margin: 14px;
+  padding: 18px;
+  position: relative;
+  min-height: 180px;
+}
+.scanline {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  background-size: 100% 3px, 6px 100%;
+  border-radius: 10px;
+}
+
+/* --- Flowchart Visualizer Styles --- */
+.flowchart-container {
+  background: #050c14;
+  border: 1px solid #1a365d;
+  border-radius: 14px;
+  padding: 20px 16px;
+  margin-top: 20px;
+  overflow-x: auto;
+}
+.fc-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 600px;
+}
+.fc-row {
+  display: flex;
+  justify-content: space-around;
+  position: relative;
+}
+.fc-node {
+  background: #09131f;
+  border: 2px solid #243b55;
+  border-radius: 10px;
+  padding: 10px 14px;
+  color: #cfd8dc;
+  font-size: .8rem;
+  text-align: center;
+  width: 130px;
+  transition: all .3s;
+}
+.fc-node.active {
+  border-color: #00bcd4;
+  background: #00363a;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 0 16px #00bcd4aa;
+  transform: scale(1.05);
+}
+.fc-node.ending-node {
+  width: 105px;
+  font-size: .75rem;
+}
+.fc-node.ending-node.active {
+  border-color: #4caf50;
+  background: #004d40;
+  box-shadow: 0 0 20px #4caf50cc;
+}
+.fc-label {
+  font-family: ui-monospace, monospace;
+  font-size: .68rem;
+  color: #ff9a4d;
+  margin-bottom: 2px;
+}
+
+/* --- Official NASA Mission Log Certificate --- */
+.nasa-cert {
+  background: #040810;
+  border: 3px double #00bcd4;
+  border-radius: 12px;
+  padding: 24px;
+  margin-top: 24px;
+  position: relative;
+  box-shadow: 0 0 30px rgba(0, 188, 212, 0.25);
+}
+.nasa-cert-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #00bcd4;
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+.nasa-meatball {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  font-size: 1.1rem;
+  color: #e0f7fa;
+}
+
+/* --- Utilities --- */
+.hidden { display: none !important; }
+@keyframes fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

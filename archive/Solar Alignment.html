@@ -10,16 +10,17 @@ body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-
 .w{max-width:940px;margin:0 auto;padding:12px}
 h1{margin:4px 0 6px;font-size:1.4rem}
 </style></head><body><div class="w">
+<h1>☀️ Solar Alignment</h1>
+<p>The panel swings back and forth. Click, tap or press Space to turn it around, or use ← → to choose a direction. Keep it pointed at the Sun!</p>
 <div id="game"></div>
 </div>
 <script type="module">
 import { DadPhone } from './dadphone.js';
 //TO DO: gradient the solar panel edge facing the sun to be more yellow as it aligns with the sun
 
-
-
-// solar-align.js: "Keep the panel pointed at the Sun" minigame (45 s).
-// Uses dadphone.js for the intro and the science outro.
+// --- Check if we were launched from Sol 0 ---
+const params = new URLSearchParams(window.location.search);
+const fromSol0 = params.get('from') === 'sol0';
 
 const R = Math.PI / 180;
 const CFG = {
@@ -32,6 +33,7 @@ const CFG = {
   pointsPerSec: 10,   // score per second at perfect alignment
   pointsPerPower: 25, // score -> power for the hab
   maxPower: 100,
+  failThreshold: 30,  // score percentage below which the player fails
 };
 
 const svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'><rect width='200' height='120' fill='#0d1b2a'/><circle cx='30' cy='25' r='12' fill='#ffd24d'/><g stroke='#ffd24d' stroke-width='2' stroke-dasharray='4 3'><line x1='40' y1='31' x2='108' y2='70'/><line x1='34' y1='37' x2='102' y2='76'/></g><rect x='85' y='72' width='60' height='8' fill='#1d3f8a' stroke='#8fb4ff' transform='rotate(120 115 76)'/><text x='14' y='112' fill='#cfe' font-size='10' font-family='sans-serif'>rays hit head-on = max power</text></svg>";
@@ -41,7 +43,7 @@ const INTRO = [
   'Hey kiddo, it\u2019s Dad! Solar panels generate power from the sun, so we need to make sure they get lots of sunlight!',
   'The panel swings back and forth all by itself. Your job is to make it turn around. Click, tap or press Space to flip its direction. The \u2190 and \u2192 keys pick a direction too.',
   'Keep the panel\u2019s little sensor pointed at the Sun. The closer it aims, the faster the green power bar fills.',
-  'Stay locked on the Sun for two seconds and you\u2019ll earn a \u00d72 BONUS. You have 45 seconds. Go!',
+  'Stay locked on the Sun for five seconds and you\u2019ll earn a \u00d72 BONUS. You have 20 seconds. Go!',
 ];
 const OUTRO = [
   'Great job, kiddo! And here\u2019s the cool part: scientists do this exact same thing in real life, just without clicking.',
@@ -51,6 +53,10 @@ const OUTRO = [
   'Mars has another problem: dust. It settles on panels and blocks light. The Spirit and Opportunity rovers sometimes got a free cleaning when the wind blew it off.',
   'And sunlight on Mars is less than half as strong as on Earth, so every bit of aiming counts. Hold down the fort!',
 ];
+const FAIL_LINES = [
+  'Uh oh, kiddo. The panels barely caught any sunlight. The batteries are almost empty.',
+  'Without enough power the habitat systems can\u2019t run properly. We need to try that again!',
+];
 
 const SG_CSS = `
 .sg{display:flex;gap:10px;max-width:900px;margin:0 auto;font-family:system-ui,sans-serif}
@@ -59,10 +65,12 @@ const SG_CSS = `
 .sg-tube{flex:1;width:34px;min-height:240px;border:3px solid #22b455;border-radius:8px;background:#0b1a10;position:relative;overflow:hidden}
 .sg-fill{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(0deg,#1f9d4d,#7dff9a);transition:height .12s}
 .sg-fill.gold{background:linear-gradient(0deg,#d49a00,#ffe066);box-shadow:0 0 14px #ffd24d}
+.sg-fill.fail{background:linear-gradient(0deg,#b71c1c,#ff5252);border-color:#b71c1c}
 .sg-stage{position:relative;flex:1;min-width:0}
 .sg canvas{width:100%;height:auto;display:block;border:3px solid #111;border-radius:8px;touch-action:manipulation;cursor:pointer;background:#c98a5a}
 .sg-start{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font:700 1.1rem system-ui;padding:12px 22px;border-radius:12px;border:0;background:#ff9a4d;color:#1a0a00;cursor:pointer;box-shadow:0 4px 18px #0006}
 .sg-res{max-width:900px;margin:10px auto 0;padding:10px 14px;border-radius:12px;border:1px solid var(--line,#5a3a2c);background:var(--card,#24150f);color:var(--fg,#f3e6dc);font-family:system-ui,sans-serif}
+.sg-res.fail{border-color:#b71c1c;background:#2a0a0a}
 `;
 
 function createSolarGame(mount, opts = {}) {
@@ -72,10 +80,8 @@ function createSolarGame(mount, opts = {}) {
   const $ = (q) => mount.querySelector(q);
   const cv = $('canvas'), ctx = cv.getContext('2d'), fill = $('.sg-fill'), btn = $('.sg-start'), resEl = $('.sg-res');
 
-  // Scene layout (matches the sketch): sun upper-left, panel on a pole in the middle.
   const W = 780, H = 480, P = { x: 382, y: 264 }, S = { x: 248, y: 106 };
-  const sunDeg = Math.atan2(S.x - P.x, P.y - S.y) / R;      // direction of the Sun seen from the panel (0 = straight up)
-  // ALIGNMENT: 1 when the panel faces the Sun, falling off with cos(angle). Same rule as real panels.
+  const sunDeg = Math.atan2(S.x - P.x, P.y - S.y) / R;
   const alignOf = (a) => Math.max(0, Math.cos((a - sunDeg) * R));
 
   const fresh = () => ({ running: false, busy: false, a: -60, dir: 1, t: 0, level: 0, base: 0, bonus: 0, lock: 0, mult: 1, done: null });
@@ -99,12 +105,12 @@ function createSolarGame(mount, opts = {}) {
     const al = alignOf(s.a);
     if (s.running) {
       s.t += dt;
-      const rate = al * al;                                           // squared = rewards good aim more
+      const rate = al * al;
       if (al >= CFG.lockAt) s.lock += dt; else if (al < CFG.dropAt) s.lock = 0;
-      s.mult = s.lock >= CFG.lockSecs ? 2 : 1;                        // x2 BONUS
+      s.mult = s.lock >= CFG.lockSecs ? 2 : 1;
       const pts = rate * CFG.pointsPerSec * dt;
       s.base += pts; if (s.mult > 1) s.bonus += pts;
-      s.level = Math.max(0, Math.min(100, s.level + (rate * s.mult * 14 - 4) * dt));   // bar rises when aligned, drains when not
+      s.level = Math.max(0, Math.min(100, s.level + (rate * s.mult * 14 - 4) * dt));
       if (s.t >= CFG.seconds) { s.running = false; s.done && s.done(); }
     }
     fill.style.height = s.level + '%'; fill.classList.toggle('gold', s.mult > 1);
@@ -120,12 +126,12 @@ function createSolarGame(mount, opts = {}) {
     c.fillStyle = gl; c.fillRect(S.x - 200, S.y - 200, 400, 400);
     c.fillStyle = '#ffd24d'; c.beginPath(); c.arc(S.x, S.y, 40, 0, 7); c.fill();
     if (al > 0.05) { c.strokeStyle = `rgba(255,215,90,${al})`; c.lineWidth = 4; c.setLineDash([10, 8]); c.beginPath(); c.moveTo(S.x + 30, S.y + 24); c.lineTo(P.x, P.y); c.stroke(); c.setLineDash([]); }
-    c.fillStyle = '#555'; c.fillRect(P.x - 7, P.y, 14, H - P.y);                         // pole
-    c.save(); c.translate(P.x, P.y); c.rotate(s.a * R);                                   // ROTATE the panel
+    c.fillStyle = '#555'; c.fillRect(P.x - 7, P.y, 14, H - P.y);
+    c.save(); c.translate(P.x, P.y); c.rotate(s.a * R);
     c.shadowColor = '#ffd24d'; c.shadowBlur = 30 * al; c.fillStyle = '#1d3f8a'; c.fillRect(-72, -9, 144, 18); c.shadowBlur = 0;
     c.strokeStyle = '#8fb4ff'; c.lineWidth = 1.5; c.strokeRect(-72, -9, 144, 18);
     for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(i * 29, -9); c.lineTo(i * 29, 9); c.stroke(); }
-    c.strokeStyle = '#222'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -9); c.lineTo(0, -36); c.stroke();   // sensor stick
+    c.strokeStyle = '#222'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -9); c.lineTo(0, -36); c.stroke();
     c.fillStyle = al > 0.9 ? '#ffe066' : '#fff'; c.beginPath(); c.ellipse(0, -46, 8, 11, 0, 0, 7); c.fill(); c.stroke();
     c.restore();
     c.fillStyle = '#fff'; c.font = 'bold 18px system-ui'; c.textAlign = 'center';
@@ -140,20 +146,68 @@ function createSolarGame(mount, opts = {}) {
 
   function score() {
     const total = s.base + s.bonus, max = CFG.seconds * CFG.pointsPerSec, f = total / max;
-    return { score: Math.round(total), base: Math.round(s.base), bonus: Math.round(s.bonus),
-      power: Math.min(CFG.maxPower, Math.round(total / CFG.pointsPerPower)), stars: f >= 0.75 ? 3 : f >= 0.5 ? 2 : f >= 0.25 ? 1 : 0 };
+    const pct = Math.round(f * 100);
+
+    // Determine outcome tier
+    let failed = pct < CFG.failThreshold;
+    let powerBonus = failed ? 0 : (pct >= 100 ? 25 : 5);
+
+    return {
+      score: Math.round(total),
+      base: Math.round(s.base),
+      bonus: Math.round(s.bonus),
+      power: Math.min(CFG.maxPower, Math.round(total / CFG.pointsPerPower)),
+      stars: f >= 0.75 ? 3 : f >= 0.5 ? 2 : f >= 0.25 ? 1 : 0,
+      pct,
+      failed,
+      powerBonus,   // 0 = fail, 5 = partial, 25 = perfect
+    };
   }
 
   async function play() {
     if (s.busy) return;
     s = fresh(); s.busy = true; btn.hidden = true; resEl.hidden = true;
-    if (opts.intro !== false) await DadPhone.say({ from: 'dad', lines: INTRO });   // Dad explains the game first
+    fill.classList.remove('fail');
+    if (opts.intro !== false) await DadPhone.say({ from: 'dad', lines: INTRO });
     s.running = true; await new Promise((r) => { s.done = r; });
     const res = score();
     resEl.hidden = false;
-    resEl.innerHTML = `<b>${'⭐'.repeat(res.stars) || '☁️'} Time's up!</b> Score ${res.score} (base ${res.base} + bonus ${res.bonus}). Power sent to the base: <b>+${res.power}</b>.`;
-    if (opts.outro !== false) await DadPhone.ring({ from: 'dad', lines: OUTRO });  // Dad explains the real science
+    resEl.classList.toggle('fail', res.failed);
+    fill.classList.toggle('fail', res.failed);
+
+    if (res.failed) {
+      // --- FAIL ---
+      resEl.innerHTML = `<b>❌ Mission Failed!</b> Score ${res.score} (${res.pct}%). You needed at least ${CFG.failThreshold}% to keep the base running.`;
+      await DadPhone.ring({ from: 'dad', lines: FAIL_LINES });
+    } else if (res.pct >= 100) {
+      // --- PERFECT ---
+      resEl.innerHTML = `<b>${'⭐'.repeat(res.stars)} Perfect alignment!</b> Score ${res.score} (${res.pct}%). Base Power: <b>+25%</b>`;
+      if (opts.outro !== false) await DadPhone.ring({ from: 'dad', lines: OUTRO });
+    } else {
+      // --- PARTIAL (30-99%) ---
+      resEl.innerHTML = `<b>${'⭐'.repeat(res.stars) || '☁️'} Time's up!</b> Score ${res.score} (${res.pct}%). Base Power: <b>+5%</b>. Not bad, but perfect alignment would give +25%!`;
+      if (opts.outro !== false) await DadPhone.ring({ from: 'dad', lines: OUTRO });
+    }
+
     s.busy = false; btn.textContent = '↻ Play again'; btn.hidden = false;
+
+    // If launched from Sol 0, store result and offer to go back
+    if (fromSol0) {
+      sessionStorage.setItem('solarResult', JSON.stringify(res));
+      const backBtn = document.createElement('button');
+      backBtn.textContent = res.failed ? '↻ Try again' : '→ Continue to Sol 0';
+      backBtn.className = 'sg-start';
+      backBtn.style.cssText = 'position:relative;transform:none;margin:12px auto;display:block';
+      if (res.failed) {
+        backBtn.addEventListener('click', () => { backBtn.remove(); play(); });
+      } else {
+        backBtn.addEventListener('click', () => {
+          window.location.href = 'Sol 0.html?after=solar&powerBonus=' + res.powerBonus + '&pct=' + res.pct + '&stars=' + res.stars;
+        });
+      }
+      resEl.appendChild(backBtn);
+    }
+
     if (opts.onDone) opts.onDone(res);
     return res;
   }

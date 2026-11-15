@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DadPhone Test</title>
+</head>
+<body>
+    <h1>DadPhone Test Page</h1>
+    <button id="callBtn">Trigger DadPhone</button>
+
+    <!-- Import and use dadphone.js -->
+    <script type="module">
+        import { DadPhone } from './dadphone.js';
+
+        document.getElementById('callBtn').addEventListener('click', async () => {
+            await DadPhone.ring({
+                from: 'dad',
+                lines: ['Hey kiddo, check the solar array!']
+            });
+        });
+    </script>
+</body>
+</html>
