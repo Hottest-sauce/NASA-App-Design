@@ -18,6 +18,7 @@ const server = http.createServer((req, res) => {
         '.css': 'text/css',
         '.png': 'image/png',
         '.jpg': 'image/jpeg',
+        '.gif': 'image/gif',
         '.svg': 'image/svg+xml',
         '.json': 'application/json',
         '.mp4': 'video/mp4',

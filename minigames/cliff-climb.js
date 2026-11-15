@@ -51,7 +51,7 @@ export async function mountCliffClimb(container, opts = {}) {
       <!-- Title & Live Telemetry -->
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-family:monospace; font-size:.85rem; color:#80cbc4;">
         <span>🧗 CLIFF-FACE ROVER TRANSIT // SOL 1</span>
-        <span>LAT: 18.97° N | LON: 77.60° E</span>
+        <span id="rover-coord-hud" style="color:#00e5ff; font-weight:700;">LAT: 17.80514° N | LON: 75.99765° E</span>
       </div>
 
       <!-- Distance Progress Bar -->
@@ -132,6 +132,37 @@ export async function mountCliffClimb(container, opts = {}) {
   const batSeg2 = container.querySelector('#bat-seg-2');
   const batSeg3 = container.querySelector('#bat-seg-3');
   const batNum = container.querySelector('#battery-num');
+  const coordHud = container.querySelector('#rover-coord-hud');
+
+  // Mars route waypoints along scale map:
+  // 1st marker: 17.80514, 75.99765 (Sol 0 Base)
+  // 2nd marker: 17.93835, 76.19952
+  // 3rd marker: 18.08660, 76.87518
+  // 4th marker: 18.49316, 77.24322 (Cliff Overlook / Neretva Vallis)
+  const ROUTE_MARKERS = [
+    { lat: 17.80514, lon: 75.99765 },
+    { lat: 17.93835, lon: 76.19952 },
+    { lat: 18.08660, lon: 76.87518 },
+    { lat: 18.49316, lon: 77.24322 }
+  ];
+
+  function getRouteCoordinates(t) {
+    if (t <= 0) return ROUTE_MARKERS[0];
+    if (t >= 1) return ROUTE_MARKERS[3];
+    const c = [0, 0.164, 0.625, 1.0];
+    for (let i = 0; i < 3; i++) {
+      if (t <= c[i + 1]) {
+        const segT = (t - c[i]) / (c[i + 1] - c[i]);
+        const p1 = ROUTE_MARKERS[i];
+        const p2 = ROUTE_MARKERS[i + 1];
+        return {
+          lat: p1.lat + (p2.lat - p1.lat) * segT,
+          lon: p1.lon + (p2.lon - p1.lon) * segT,
+        };
+      }
+    }
+    return ROUTE_MARKERS[3];
+  }
 
   const W = canvas.width;
   const H = canvas.height;
@@ -386,6 +417,26 @@ export async function mountCliffClimb(container, opts = {}) {
   // --- MAIN LOOP ---
   const resultPromise = new Promise((resolve) => {
     minigameResolve = resolve;
+
+    // Secret Konami code hook to skip active cliff climb immediately with 100% battery
+    window.__skipActiveMinigame = () => {
+      running = false;
+      if (animId) cancelAnimationFrame(animId);
+      window.removeEventListener('keydown', onKeydown);
+      window.removeEventListener('keyup', onKeyup);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      resolve({
+        survived: true,
+        finalBattery: 100,
+        hitsTaken: 0,
+      });
+    };
+
+    if (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE) {
+      window.__skipActiveMinigame();
+      return;
+    }
+
     function gameLoop(now) {
       const dt = Math.min(0.08, (now - lastTime) / 1000);
       lastTime = now;
@@ -423,7 +474,14 @@ export async function mountCliffClimb(container, opts = {}) {
         progressBar.style.width = progressPct.toFixed(1) + '%';
         timerLabel.textContent = Math.max(0, Math.ceil(DURATION - elapsed)) + 's';
 
-        // Check completion (Ending cutscene occurs on click)
+        // Update live coordinates telemetry HUD interpolating along scale Mars route
+        const progressFraction = Math.min(1, Math.max(0, elapsed / DURATION));
+        const curCoord = getRouteCoordinates(progressFraction);
+        if (coordHud) {
+          coordHud.textContent = `LAT: ${curCoord.lat.toFixed(5)}° N | LON: ${curCoord.lon.toFixed(5)}° E`;
+        }
+
+        // Check completion (Ending cutscene plays out, then proceeds on click)
         if (elapsed >= DURATION && !arrivalTriggered) {
           arrivalTriggered = true;
           running = false;
@@ -601,7 +659,6 @@ export async function mountCliffClimb(container, opts = {}) {
     rocks.forEach((rk) => {
       c.save();
       c.translate(rk.x, rk.y);
-      c.rotate(rk.rot);
 
       // Boulder ground shadow
       c.fillStyle = 'rgba(25, 8, 4, 0.55)';
@@ -713,7 +770,7 @@ export async function mountCliffClimb(container, opts = {}) {
     c.restore();
   }
 
-  // --- ARRIVAL CUTSCENE: OCCURS ON CLICK ---
+  // --- ARRIVAL CUTSCENE: PLAYS OUT CUTSCENE, PROCEEDS ON CLICK ---
   function triggerArrivalCutscene(resolve) {
     window.removeEventListener('keydown', onKeydown);
     window.removeEventListener('keyup', onKeyup);
@@ -721,89 +778,38 @@ export async function mountCliffClimb(container, opts = {}) {
 
     // Rover comes to a parked stop at overlook
     scrollSpeed = 0;
-    renderCanvas();
+    rover.bounceOffset = 0;
+    rover.shudder = 0;
 
-    // Create interactive click overlay over canvas
-    const clickOverlay = document.createElement('div');
-    clickOverlay.id = 'arrival-click-overlay';
-    clickOverlay.style.cssText = `
-      position: absolute; inset: 0; z-index: 40;
-      background: rgba(5, 12, 22, 0.78);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      cursor: pointer; animation: fade-in .3s ease-out;
-      border-radius: 10px; padding: 20px;
-    `;
-    clickOverlay.innerHTML = `
-      <div style="font-family:ui-monospace,monospace; font-size:1.2rem; color:#ffd54f; font-weight:800; margin-bottom:10px; letter-spacing:.05em; text-align:center;">
-        🏁 JEZERO CLIFF OVERLOOK REACHED
-      </div>
-      <div style="color:#80cbc4; font-family:system-ui,sans-serif; font-size:.92rem; margin-bottom:18px; text-align:center; max-width:440px;">
-        Rover transmission locked in park. Atmospheric seal verified. Ready for surface EVA.
-      </div>
-      <button id="btn-egress-click" style="
-        background: linear-gradient(135deg, #00897b, #004d40);
-        border: 2px solid #00e5ff;
-        color: #ffffff; border-radius: 24px;
-        padding: 12px 28px; font-family: ui-monospace, monospace;
-        font-size: 1rem; font-weight: 700; cursor: pointer;
-        box-shadow: 0 0 20px rgba(0, 229, 255, 0.45);
-        transition: transform .15s, background .2s;
-      ">
-        👉 CLICK TO STEP OUT & SURVEY OVERLOOK
-      </button>
-      <div style="margin-top:10px; font-family:monospace; font-size:.75rem; color:#4dd0e1; opacity:.8;">
-        (Click anywhere to commence surface egress)
-      </div>
-    `;
+    let cutsceneTime = 0;
+    const cutsceneDuration = 2.4; // 2.4 seconds walk
+    let astroX = rover.x;
+    let astroY = rover.y - 12;
+    const footprints = [];
+    let cutsceneFinished = false;
 
-    canvas.parentElement.appendChild(clickOverlay);
+    playBeep(320, 0.3, 'sine');
+    setTimeout(() => playBeep(640, 0.4, 'sine'), 250);
 
-    let cutsceneStarted = false;
-    function startEgressCutscene() {
-      if (cutsceneStarted) return;
-      cutsceneStarted = true;
-      clickOverlay.remove();
+    function cutsceneLoop(now) {
+      const dt = Math.min(0.08, (now - lastTime) / 1000);
+      lastTime = now;
+      cutsceneTime += dt;
 
-      // If secret skip active, complete immediately
-      if (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE) {
-        cancelAnimationFrame(animId);
-        resolve({
-          survived: battery > 0,
-          finalBattery: Math.round(battery),
-          hitsTaken,
-        });
-        return;
-      }
+      renderCanvas();
+      const c = ctx;
 
-      // Cutscene animation: astronaut steps out leaving footprints
-      let cutsceneTime = 0;
-      const cutsceneDuration = 2.6; // 2.6 seconds
-      let astroX = rover.x;
-      let astroY = rover.y - 12;
-      const footprints = [];
+      // Draw footprints left on Mars regolith
+      footprints.forEach((fp) => {
+        c.fillStyle = '#6d2e18';
+        c.beginPath();
+        c.ellipse(fp.x, fp.y, 3, 5, fp.rot || 0, 0, Math.PI * 2);
+        c.fill();
+      });
 
-      playBeep(320, 0.3, 'sine');
-      setTimeout(() => playBeep(640, 0.4, 'sine'), 250);
-
-      function cutsceneLoop(now) {
-        const dt = Math.min(0.08, (now - lastTime) / 1000);
-        lastTime = now;
-        cutsceneTime += dt;
-
-        renderCanvas();
-        const c = ctx;
-
-        // Draw footprints left on Mars regolith
-        footprints.forEach((fp) => {
-          c.fillStyle = '#6d2e18';
-          c.beginPath();
-          c.ellipse(fp.x, fp.y, 3, 5, fp.rot || 0, 0, Math.PI * 2);
-          c.fill();
-        });
-
-        // Astronaut steps out and walks forward toward overlook
-        const walkDt = dt * 28;
+      // Astronaut steps out and walks forward toward overlook
+      if (cutsceneTime < cutsceneDuration) {
+        const walkDt = dt * 30;
         astroY -= walkDt;
 
         if (Math.floor(cutsceneTime * 6) % 2 === 0) {
@@ -811,62 +817,108 @@ export async function mountCliffClimb(container, opts = {}) {
             footprints.push({ x: astroX + (footprints.length % 2 === 0 ? -4 : 4), y: astroY + 8 });
           }
         }
-
-        // Draw Astronaut in EVA suit
-        c.save();
-        c.translate(astroX, astroY);
-        c.fillStyle = '#cfd8dc';
-        c.fillRect(-8, 3, 16, 7);
-        c.fillStyle = '#ffffff';
-        c.beginPath();
-        c.ellipse(0, 0, 9, 8, 0, 0, Math.PI * 2);
-        c.fill();
-        c.strokeStyle = '#90a4ae';
-        c.lineWidth = 1;
-        c.stroke();
-        c.fillStyle = '#ffd54f';
-        c.beginPath();
-        c.ellipse(0, -3, 6, 4, 0, 0, Math.PI * 2);
-        c.fill();
-        c.strokeStyle = '#b78103';
-        c.lineWidth = 1;
-        c.stroke();
-        c.restore();
-
-        // Cutscene Overlook HUD Banner
-        c.fillStyle = 'rgba(5, 11, 20, 0.9)';
-        c.fillRect(W / 2 - 250, 30, 500, 56);
-        c.strokeStyle = '#00bcd4';
-        c.lineWidth = 2;
-        c.strokeRect(W / 2 - 250, 30, 500, 56);
-
-        c.textAlign = 'center';
-        c.fillStyle = '#00e5ff';
-        c.font = 'bold 16px ui-monospace, monospace';
-        c.fillText('🏁 JEZERO CLIFF OVERLOOK REACHED', W / 2, 54);
-
-        c.fillStyle = '#7dff9a';
-        c.font = '13px ui-monospace, monospace';
-        c.fillText('Pressurization Nominal • Player Ingressing Surface', W / 2, 73);
-
-        if (cutsceneTime < cutsceneDuration) {
-          requestAnimationFrame(cutsceneLoop);
-        } else {
-          cancelAnimationFrame(animId);
-          resolve({
-            survived: battery > 0,
-            finalBattery: Math.round(battery),
-            hitsTaken,
-          });
-        }
       }
 
-      requestAnimationFrame(cutsceneLoop);
+      // Draw Astronaut in EVA suit
+      c.save();
+      c.translate(astroX, astroY);
+      c.fillStyle = '#cfd8dc';
+      c.fillRect(-8, 3, 16, 7);
+      c.fillStyle = '#ffffff';
+      c.beginPath();
+      c.ellipse(0, 0, 9, 8, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = '#90a4ae';
+      c.lineWidth = 1;
+      c.stroke();
+      c.fillStyle = '#ffd54f';
+      c.beginPath();
+      c.ellipse(0, -3, 6, 4, 0, 0, Math.PI * 2);
+      c.fill();
+      c.strokeStyle = '#b78103';
+      c.lineWidth = 1;
+      c.stroke();
+      c.restore();
+
+      // Cutscene Overlook HUD Banner
+      c.fillStyle = 'rgba(5, 11, 20, 0.9)';
+      c.fillRect(W / 2 - 250, 30, 500, 56);
+      c.strokeStyle = '#00bcd4';
+      c.lineWidth = 2;
+      c.strokeRect(W / 2 - 250, 30, 500, 56);
+
+      c.textAlign = 'center';
+      c.fillStyle = '#00e5ff';
+      c.font = 'bold 16px ui-monospace, monospace';
+      c.fillText('🏁 JEZERO CLIFF OVERLOOK REACHED', W / 2, 54);
+
+      c.fillStyle = '#7dff9a';
+      c.font = '13px ui-monospace, monospace';
+      c.fillText('Pressurization Nominal • Player Stepped Out onto Rim', W / 2, 73);
+
+      if (cutsceneTime < cutsceneDuration) {
+        requestAnimationFrame(cutsceneLoop);
+      } else {
+        // Cutscene finished playing out!
+        // DO NOT AUTOPROCEED — PROCEED TO NEXT STAGE ON CLICK
+        cutsceneFinished = true;
+        promptProceedOnClick();
+      }
+    }
+
+    function promptProceedOnClick() {
+      if (document.querySelector('#arrival-click-overlay')) return;
+
+      const clickOverlay = document.createElement('div');
+      clickOverlay.id = 'arrival-click-overlay';
+      clickOverlay.style.cssText = `
+        position: absolute; inset: 0; z-index: 40;
+        background: rgba(5, 12, 22, 0.45);
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: flex-end;
+        cursor: pointer; animation: fade-in .3s ease-out;
+        border-radius: 10px; padding: 30px;
+      `;
+      clickOverlay.innerHTML = `
+        <button id="btn-egress-click" style="
+          background: linear-gradient(135deg, #00897b, #004d40);
+          border: 2px solid #00e5ff;
+          color: #ffffff; border-radius: 28px;
+          padding: 14px 34px; font-family: ui-monospace, monospace;
+          font-size: 1.05rem; font-weight: 800; cursor: pointer;
+          box-shadow: 0 0 24px rgba(0, 229, 255, 0.55);
+          transition: transform .15s, background .2s;
+        ">
+          👉 CLICK TO PROCEED TO NERETVA VALLIS
+        </button>
+        <div style="margin-top:10px; font-family:monospace; font-size:.8rem; color:#4dd0e1; text-shadow:0 1px 3px #000;">
+          (Rover parked at canyon overlook • Click anywhere to advance)
+        </div>
+      `;
+
+      canvas.parentElement.appendChild(clickOverlay);
+
+      const doAdvance = () => {
+        clickOverlay.remove();
+        cancelAnimationFrame(animId);
+        resolve({
+          survived: battery > 0,
+          finalBattery: Math.round(battery),
+          hitsTaken,
+        });
+      };
+
+      clickOverlay.onclick = doAdvance;
+      canvas.onclick = doAdvance;
+      window.__skipActiveCutscene = doAdvance;
+
+      if (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE) {
+        doAdvance();
+      }
     }
 
     // Support instant skip via Konami code
     window.__skipActiveCutscene = () => {
-      startEgressCutscene();
       cancelAnimationFrame(animId);
       resolve({
         survived: battery > 0,
@@ -875,12 +927,8 @@ export async function mountCliffClimb(container, opts = {}) {
       });
     };
 
-    clickOverlay.onclick = startEgressCutscene;
-    canvas.onclick = startEgressCutscene;
-
-    if (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE) {
-      startEgressCutscene();
-    }
+    // Begin cutscene loop immediately
+    requestAnimationFrame(cutsceneLoop);
   }
 
   // --- FAILURE CUTSCENE: OCCURS ON CLICK ---
@@ -891,13 +939,14 @@ export async function mountCliffClimb(container, opts = {}) {
     canvas.removeEventListener('pointermove', onPointerMove);
 
     scrollSpeed = 0;
+    rover.bounceOffset = 0;
     renderCanvas();
 
     const failOverlay = document.createElement('div');
     failOverlay.id = 'fail-click-overlay';
     failOverlay.style.cssText = `
       position: absolute; inset: 0; z-index: 40;
-      background: rgba(25, 4, 4, 0.82);
+      background: rgba(25, 4, 4, 0.85);
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       cursor: pointer; animation: fade-in .3s ease-out;
@@ -945,6 +994,7 @@ export async function mountCliffClimb(container, opts = {}) {
 
     failOverlay.onclick = startRecovery;
     canvas.onclick = startRecovery;
+    window.__skipActiveCutscene = startRecovery;
 
     if (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE) {
       startRecovery();
@@ -952,5 +1002,7 @@ export async function mountCliffClimb(container, opts = {}) {
   }
 
   const finalResult = await resultPromise;
+  window.__skipActiveMinigame = null;
+  window.__skipActiveCutscene = null;
   return finalResult;
 }

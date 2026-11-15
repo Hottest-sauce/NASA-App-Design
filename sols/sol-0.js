@@ -11,7 +11,7 @@ export async function mountSol0(container, state) {
   container.innerHTML = `
     <div class="scene">
       <h1>🔴 Perseverance Challenge</h1>
-      <p class="subtitle">Act 1 · Sol 0 Morning Prep (Jezero Crater Outpost [18.97° N, 77.60° E])</p>
+      <p class="subtitle">Act 1 · Sol 0 Morning Prep (Jezero Crater Outpost [17.81° N, 76.00° E])</p>
       <p>Your family was selected as the first human family on Mars. With your parents away on an expedition, you are in command of the Jezero Outpost. Before heading out to retrieve <b>Perseverance's sample tubes</b>, monitor and calibrate your base systems from the central habitat console.</p>
     </div>
 
@@ -34,8 +34,8 @@ export async function mountSol0(container, state) {
 
         <button class="hab-cam-btn" data-cam="hydro">
           <span class="cam-id">CAM 02</span>
-          <span class="cam-title">🥔 Plant Watering</span>
-          <span class="cam-status" id="status-cam-hydro">Soil Moisture: 38% (Low)</span>
+          <span class="cam-title">🥔 Potato Farm</span>
+          <span class="cam-status" id="status-cam-hydro" style="color:#ff5252; font-weight:700;">Soil Moisture: 38% (Low)</span>
         </button>
 
         <button class="hab-cam-btn" data-cam="comms">
@@ -47,7 +47,7 @@ export async function mountSol0(container, state) {
         <button class="hab-cam-btn" data-cam="airlock">
           <span class="cam-id">CAM 04</span>
           <span class="cam-title">🚪 Oxygen & Rover</span>
-          <span class="cam-status" id="status-cam-airlock">Status: Prep Incomplete</span>
+          <span class="cam-status" id="status-cam-airlock" style="color:#ff5252; font-weight:700;">Status: Prep Incomplete</span>
         </button>
       </div>
 
@@ -110,7 +110,8 @@ export async function mountSol0(container, state) {
   }
 
   // Station render logic
-  function renderCamView(cam) {
+  function renderCamView(cam, force = false) {
+    if (!force && activeCam === cam) return;
     activeCam = cam;
     camButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.cam === cam));
 
@@ -151,10 +152,29 @@ export async function mountSol0(container, state) {
     } else if (cam === 'hydro') {
       viewscreen.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <b style="color:#81c784; font-size:1.05rem;">🥔 CAM 02: PLANT GROW DOME</b>
+          <b style="color:#81c784; font-size:1.05rem;">🥔 CAM 02: PLANT FARM</b>
           <span style="font-family:monospace; color:#81c784;">BIOLOGY OSDR-44</span>
         </div>
         <p>Indoor potato crops are protected against the harsh Martian exterior (<b>${temp.currentAvg}°C</b>, Low: <b>${temp.currentMin}°C</b>, High: <b>${temp.currentMax}°C</b> from NASA InSight data). Grow lamps require steady electrical wattage.</p>
+
+        <!-- Camera 02 Surveillance Feed (Farm Interior with Static Overlay) -->
+        <div class="cam-preview-frame">
+          <img src="assets/images/farm_interior.png" alt="Hydroponics Farm Interior Feed" class="cam-panning-img" />
+          <img src="assets/videos/static-effect.gif" alt="Surveillance Feed Static Overlay" class="cam-static-overlay" />
+          
+          <div class="cam-hud-badge">
+            <span class="cam-rec-dot"></span>
+            <span>LIVE // CAM-02: BIO-DOME</span>
+          </div>
+          <div class="cam-hud-info">
+            <span>NASA OSDR-44 • 1080p 24FPS</span>
+          </div>
+          <div class="cam-hud-bottom">
+            <span>PTZ HORIZON SWEEP [AUTO]</span>
+            <span>SECTOR: HYDROPONIC GREENHOUSE</span>
+          </div>
+        </div>
+
         <div style="background:#030810; padding:10px 14px; border-radius:8px; border:1px solid #1a365d; font-family:monospace; font-size:.85rem; margin-top:8px;">
           <div>SOIL HYDRATION: <b style="color:${state.power >= 55 ? '#4caf50' : '#ff9800'};">${state.power >= 55 ? 'OPTIMAL (Pumps Powered)' : 'DEFICIT (Awaiting Power)'}</b></div>
           <div>DOME HEATING SHIELD: <b style="color:#00e5ff;">+19.2°C (Controlled)</b> vs Exterior ${temp.currentAvg}°C</div>
@@ -169,8 +189,27 @@ export async function mountSol0(container, state) {
           <span style="font-family:monospace; color:#4caf50;">STATUS: TRACKING</span>
         </div>
         <p>The high-gain parabolic antenna is aligned toward Mars orbiters and NASA's Deep Space Network.</p>
+
+        <!-- Camera 03 Surveillance Feed (Satellite Static View with Static Overlay) -->
+        <div class="cam-preview-frame" style="border-color:#1976d2;">
+          <img src="assets/images/satellite.jpg" alt="Deep Space Satellite Relay" class="cam-static-img" />
+          <img src="assets/videos/static-effect.gif" alt="Surveillance Feed Static Overlay" class="cam-static-overlay" />
+          
+          <div class="cam-hud-badge" style="color:#00e5ff; border-color:rgba(0,229,255,0.4);">
+            <span class="cam-rec-dot" style="background:#00e5ff; box-shadow:0 0 8px #00e5ff;"></span>
+            <span>LIVE // CAM-03: ORBITAL SAT-LINK</span>
+          </div>
+          <div class="cam-hud-info">
+            <span>NASA MRO RELAY • DSN 70M</span>
+          </div>
+          <div class="cam-hud-bottom">
+            <span>TRANSMISSION: STATIC CARRIER LOCK</span>
+            <span>POLAR ORBIT: 320 KM ALT</span>
+          </div>
+        </div>
+
         <div style="background:#030810; padding:10px 14px; border-radius:8px; border:1px solid #1a365d; font-family:monospace; font-size:.85rem; margin-top:8px;">
-          <div>BASE LOCATION: <b>18.97278° N, 77.60234° E</b> (Jezero Crater)</div>
+          <div>BASE LOCATION: <b>17.80514° N, 75.99765° E</b> (Jezero Crater)</div>
           <div>EARTH-MARS LIGHT DELAY: <b>~14.2 MINUTES</b></div>
           <div>ATMOSPHERIC PRESSURE: <b>${temp.currentPressure || 742} Pa</b> (InSight MEDA)</div>
           <div>SESSION TELEMETRY CACHE: <b>SYNCHRONIZED (UTC)</b></div>
@@ -181,9 +220,28 @@ export async function mountSol0(container, state) {
         viewscreen.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <b style="color:#ffb74d; font-size:1.05rem;">🚪 CAM 04: OXYGEN & ROVER BAY</b>
-            <span style="font-family:monospace; color:#ff9800;">PREPARATION REQUIRED</span>
+            <span style="font-family:monospace; color:#ff5252; font-weight:700;">PREPARATION REQUIRED</span>
           </div>
           <p>The pressurized exploration rover is docked. Outside temperature is cold at <b>${temp.currentAvg}°C</b>. Exploration gear is prepped with 11 kg water and 3.5 kg oxygen for the Jezero Crater trek.</p>
+
+          <!-- Camera 04 Surveillance Feed (Rover Bay with Static Overlay) -->
+          <div class="cam-preview-frame" style="border-color:#f57c00;">
+            <img src="assets/images/rover.png" alt="Exploration Rover Bay" class="cam-static-img" style="object-fit:cover; background:#08131e;" />
+            <img src="assets/videos/static-effect.gif" alt="Surveillance Feed Static Overlay" class="cam-static-overlay" />
+            
+            <div class="cam-hud-badge" style="color:#ffb74d; border-color:rgba(255,183,77,0.4);">
+              <span class="cam-rec-dot" style="background:#ffb74d; box-shadow:0 0 8px #ffb74d;"></span>
+              <span>LIVE // CAM-04: ROVER BAY</span>
+            </div>
+            <div class="cam-hud-info">
+              <span>CABIN PRESSURE: 101.3 kPa</span>
+            </div>
+            <div class="cam-hud-bottom">
+              <span>STATUS: DOCKED AT AIRLOCK 01</span>
+              <span>LIFE SUPPORT: HOLD FOR POWER CHECK</span>
+            </div>
+          </div>
+
           <p style="color:#ffb74d;">⚠️ <i>Habitat power check is required before cycling the main airlock door. Select <b>CAM 01 (Solar Array)</b> to set or initiate quick start.</i></p>
         `;
       } else {
@@ -193,6 +251,25 @@ export async function mountSol0(container, state) {
             <span style="font-family:monospace; color:#4caf50;">CLEARANCE GRANTED</span>
           </div>
           <p>The outpost systems are stabilized. The rover oxygen system is pressurized and cleared for egress into Jezero Crater.</p>
+
+          <!-- Camera 04 Surveillance Feed (Rover Bay with Static Overlay) -->
+          <div class="cam-preview-frame" style="border-color:#4caf50;">
+            <img src="assets/images/rover.png" alt="Exploration Rover Bay" class="cam-static-img" style="object-fit:cover; background:#08131e;" />
+            <img src="assets/videos/static-effect.gif" alt="Surveillance Feed Static Overlay" class="cam-static-overlay" />
+            
+            <div class="cam-hud-badge" style="color:#76ff03; border-color:rgba(118,255,3,0.4);">
+              <span class="cam-rec-dot" style="background:#76ff03; box-shadow:0 0 8px #76ff03;"></span>
+              <span>LIVE // CAM-04: ROVER BAY</span>
+            </div>
+            <div class="cam-hud-info">
+              <span>CABIN PRESSURE: 101.3 kPa (STABLE)</span>
+            </div>
+            <div class="cam-hud-bottom">
+              <span>STATUS: READY FOR EGRESS</span>
+              <span>HATCH: PRESSURIZED</span>
+            </div>
+          </div>
+
           <button class="choice-btn" id="hub-btn-depart" style="margin-top:14px; background:linear-gradient(135deg,#00695c,#00897b); font-size:1.05rem;">
             🚪 Cycle Oxygen System & Depart for Jezero Crater (Begin Sol 1 Trek) →
           </button>
@@ -214,6 +291,9 @@ export async function mountSol0(container, state) {
     btn.addEventListener('click', () => renderCamView(btn.dataset.cam));
   });
 
+  // Render overview first (does not immediately open CAM 01)
+  renderOverview();
+
   // Initial narrator speech
   await DadPhone.say({
     from: 'narrator',
@@ -224,8 +304,6 @@ export async function mountSol0(container, state) {
     ]
   });
 
-  // Render overview first (does not immediately open CAM 01)
-  renderOverview();
 
   let resolveDeparture;
   const departurePromise = new Promise(res => { resolveDeparture = res; });
@@ -281,7 +359,7 @@ export async function mountSol0(container, state) {
         airlockStatusEl.textContent = 'Status: Cleared for Egress';
         airlockStatusEl.style.color = '#4caf50';
 
-        renderCamView('solar');
+        renderCamView('solar', true);
 
         if (result.failed) {
           await DadPhone.say({
@@ -292,6 +370,13 @@ export async function mountSol0(container, state) {
               'Base systems are in energy-save mode. Head to CAM 04 (Airlock) to depart.'
             ]
           });
+          await DadPhone.ring({
+            from: 'dad',
+            lines: [
+              { from: 'dad', text: 'Hey kiddo, we see the actuator strain from out here in our field rover.' },
+              { from: 'mom', text: 'Don\'t worry sweetie, our backup battery banks will hold. Keep your suit heaters conservative on your trek!' },
+            ]
+          });
         } else {
           await DadPhone.say({
             from: 'narrator',
@@ -299,6 +384,13 @@ export async function mountSol0(container, state) {
               'Returning to the Habitat Hub.',
               `Power level updated to ${state.power}%. Solar trajectory aligned with NASA ephemeris.`,
               'Outpost prep complete! Switch to CAM 04 (Airlock) to begin your Sol 1 trek.'
+            ]
+          });
+          await DadPhone.ring({
+            from: 'dad',
+            lines: [
+              { from: 'dad', text: 'Look at that power readout, kiddo! Batteries are humming at peak efficiency.' },
+              { from: 'mom', text: 'Telemetry confirmed from our rover console! Head to the airlock when you\'re ready. We love you!' },
             ]
           });
         }
@@ -315,7 +407,7 @@ export async function mountSol0(container, state) {
         airlockStatusEl.textContent = 'Status: Cleared for Egress';
         airlockStatusEl.style.color = '#4caf50';
 
-        renderCamView('solar');
+        renderCamView('solar', true);
 
         await DadPhone.say({
           from: 'narrator',
@@ -323,6 +415,14 @@ export async function mountSol0(container, state) {
             'Panels remain on auto-mode. Base power holds at 50%.',
             'You gained 30 extra minutes of daylight for the trek.',
             'Switch to CAM 04 (Airlock) to cycle through to Sol 1.'
+          ]
+        });
+
+        await DadPhone.ring({
+          from: 'dad',
+          lines: [
+            { from: 'dad', text: 'Sensible call saving time on calibration, kiddo!' },
+            { from: 'mom', text: 'You’ve got 30 extra daylight minutes for the trek. Double-check your suit seals before cycling the airlock!' },
           ]
         });
       };

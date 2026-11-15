@@ -1,5 +1,5 @@
 // shared/nasa-api.js — NASA Open API Integration & Session Cache
-// Base coordinates: Lat 18.97278, Lon 77.60234 (Jezero Crater Outpost)
+// Base coordinates: Lat 17.80514, Lon 75.99765 (Jezero Crater Outpost)
 // Features:
 // 1. Session-based cache (sessionStorage)
 // 2. Non-intrusive loading: triggers a loading screen overlay ONLY if fetch > 1000ms
@@ -9,9 +9,9 @@
 
 export const NASA_CONFIG = {
   apiKey: 'DEMO_KEY', // Default fallback key
-  baseLat: 18.97278,
-  baseLon: 77.60234,
-  baseAltKm: -2.5,
+  baseLat: 17.80514,
+  baseLon: 75.99765,
+  baseAltKm: 0.0,
 };
 
 const CACHE_KEY = 'nasa_outpost_api_cache_v1';
@@ -84,7 +84,7 @@ class NonIntrusiveLoader {
       <div style="font-size:2.2rem; margin-bottom:12px; animation:spin 3s linear infinite;">🛰️</div>
       <div style="font-size:1.1rem; font-weight:700; letter-spacing:.12em; color:#00e5ff;">NASA OPEN DATA TELEMETRY SYNC</div>
       <div style="font-size:.85rem; opacity:.8; margin-top:6px; color:#80cbc4;">
-        Querying InSight Weather & JPL Horizons Ephemeris [18.97° N, 77.60° E]...
+        Querying InSight Weather & JPL Horizons Ephemeris [17.83° N, 76.07° E]...
       </div>
       <div style="margin-top:16px; width:220px; height:6px; background:#112233; border-radius:3px; overflow:hidden;">
         <div style="height:100%; width:70%; background:#00bcd4; animation:pulse-bar 1.2s infinite alternate;"></div>
@@ -173,7 +173,7 @@ export function calculateMarsSunAngle(lat = NASA_CONFIG.baseLat, lon = NASA_CONF
     ltst: +ltstHours.toFixed(2),
     solarLongitude: +Ls.toFixed(1),
     gameSunDeg: +gameSunDeg.toFixed(1),
-    source: 'NASA GISS Mars24 Solar Algorithm (Jezero Crater 18.97° N, 77.60° E)',
+    source: 'NASA GISS Mars24 Solar Algorithm (Jezero Crater 17.83° N, 76.07° E)',
   };
 }
 

@@ -27,22 +27,22 @@ const svgMarkup = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 120'
 const DIAGRAM = 'data:image/svg+xml,' + encodeURIComponent(svgMarkup);
 
 const INTRO = [
-  'Hey kiddo, it\u2019s Dad! Solar panels generate power from the sun, so we need to make sure they get lots of sunlight!',
-  'The panel swings back and forth. Click, tap or press Space to flip direction. The \u2190 and \u2192 keys pick a direction too.',
-  'Watch the sensor bulb glow gold and the power meter surge as you point toward the Sun! If you drift away, power drops back to 0%.',
-  'Lock on for 4 seconds for a \u00d72 BONUS. You have 20 seconds. Align the array!',
+  { from: 'dad', text: 'Hey kiddo, it’s Dad! Solar panels generate power from the sun, so we need to make sure they get lots of sunlight!' },
+  { from: 'mom', text: 'And remember, sweetie: the sensor bulb will glow brilliant gold as you align head-on with the Sun! Watch the power tube surge.' },
+  { from: 'dad', text: 'The panel swings back and forth. Click, tap or press Space to flip direction. The ← and → keys pick a direction too.' },
+  { from: 'mom', text: 'If you drift away, power decays rapidly. Lock on for 4 continuous seconds for a ×2 BONUS. You have 20 seconds. Align the array!' },
 ];
 const OUTRO = [
-  'Great job, kiddo! And here\u2019s the cool part: scientists do this exact same thing in real life, just without clicking.',
-  { text: 'A solar panel makes the most power when sunlight hits it straight on. Tilted away, the same sunlight spreads over more area, so every bit of panel gets less.', image: DIAGRAM, caption: 'Head-on rays = most power' },
-  'The Sun moves across the sky, so engineers either turn panels with motors or pick a smart fixed angle. The International Space Station\u2019s big solar wings rotate to keep facing the Sun as it orbits.',
-  'To know where to aim, spacecraft can use sun sensors. Scientists can also calculate the Sun\u2019s position from the date, the time and the spot on the planet. That\u2019s how NASA plans for Mars.',
-  'Mars has another problem: dust. It settles on panels and blocks light. The Spirit and Opportunity rovers sometimes got a free cleaning when the wind blew it off.',
-  'And sunlight on Mars is less than half as strong as on Earth, so every bit of aiming counts. Hold down the fort!',
+  { from: 'dad', text: 'Great job, kiddo! And here’s the cool part: scientists do this exact same thing in real life, just with robotic motors.' },
+  { from: 'mom', text: 'A solar panel makes the most power when sunlight hits it straight on. Tilted away, the same sunlight spreads over more area, so every bit of panel gets less.', image: DIAGRAM, caption: 'Head-on rays = most power' },
+  { from: 'dad', text: 'The Sun moves across the sky, so engineers either turn panels with actuators or pick a smart fixed angle. The ISS solar wings rotate to keep facing the Sun as it orbits.' },
+  { from: 'mom', text: 'To know where to aim, spacecraft use sun sensors and ephemeris tables calculated from orbital models. That’s how NASA navigates rovers right here at Jezero!' },
+  { from: 'dad', text: 'Mars has another problem: dust settling on panels. The Spirit and Opportunity rovers sometimes got lucky when dust devils swept them clean.' },
+  { from: 'mom', text: 'And sunlight on Mars is less than half as strong as on Earth, so your precise aiming saved our battery banks! Proud of you, kiddo!' },
 ];
 const FAIL_LINES = [
-  'Uh oh, kiddo... the panels barely caught any sunlight, and running the orientation motor drained our stored energy.',
-  'We couldn\'t lock on in time, so the base is taking a -15% power penalty. We have to push ahead with what we have!',
+  { from: 'dad', text: 'Uh oh, kiddo... the panels barely caught any sunlight, and running the orientation motor drained our stored energy.' },
+  { from: 'mom', text: 'We couldn’t lock on in time, so the base is taking a -15% power penalty. We have to conserve power and push ahead!' },
 ];
 
 const SG_CSS = `
@@ -77,7 +77,7 @@ export async function mountSolarAlignment(container, opts = {}) {
   container.innerHTML = `
     <h2 style="color:#ff9a4d;margin:12px 0 4px">☀️ Solar Alignment (NASA Ephemeris Calibration)</h2>
     <div style="font-family:monospace; font-size:.8rem; color:#80cbc4; margin-bottom:10px; background:#07131e; padding:6px 12px; border-radius:6px; border:1px solid #1a365d;">
-      🛰️ NASA SUN VECTOR // ELEVATION: <b style="color:#00e5ff;">${sunInfo.elevation}°</b> | AZIMUTH: <b style="color:#00e5ff;">${sunInfo.azimuth}°</b> [18.97° N, 77.60° E]
+      🛰️ NASA SUN VECTOR // ELEVATION: <b style="color:#00e5ff;">${sunInfo.elevation}°</b> | AZIMUTH: <b style="color:#00e5ff;">${sunInfo.azimuth}°</b> [17.81° N, 76.00° E]
     </div>
     <p style="font-size:.88rem;opacity:.85;margin:0 0 10px">Click or press Space to reverse swing. Align sensor to surge power before it decays!</p>
     <div class="sg">
@@ -433,7 +433,26 @@ export async function mountSolarAlignment(container, opts = {}) {
     setTimeout(() => { if (!s.busy) btn.click(); }, 150);
   }
 
+  let minigameResolver = null;
   const result = await new Promise((resolve) => {
+    minigameResolver = resolve;
+
+    // Secret Konami code hook to skip minigame immediately with full calibration
+    window.__skipActiveMinigame = () => {
+      if (window.DadPhone && typeof window.DadPhone.close === 'function') {
+        window.DadPhone.close(true);
+      }
+      s.running = false;
+      s.busy = false;
+      if (s.done) s.done();
+      if (animId) cancelAnimationFrame(animId);
+      resolve({
+        score: 180, base: 180, bonus: 0,
+        power: 500, stars: 3, pct: 100,
+        failed: false, powerBonus: 25,
+      });
+    };
+
     btn.onclick = async () => {
       s = fresh();
       s.busy = true;
@@ -443,6 +462,12 @@ export async function mountSolarAlignment(container, opts = {}) {
 
       if (opts.intro !== false) {
         await DadPhone.say({ from: 'dad', lines: INTRO });
+      }
+
+      // Check if skipped during intro
+      if (typeof window !== 'undefined' && window.__SECRET_SKIP_ACTIVE) {
+        window.__skipActiveMinigame();
+        return;
       }
 
       // RESET THE BAR TO 0 ONCE PLAYER CAN CONTROL
@@ -488,6 +513,7 @@ export async function mountSolarAlignment(container, opts = {}) {
     };
   });
 
+  window.__skipActiveMinigame = null;
   cv.removeEventListener('pointerdown', onPointer);
   window.removeEventListener('keydown', onKeydown);
   if (animId) cancelAnimationFrame(animId);

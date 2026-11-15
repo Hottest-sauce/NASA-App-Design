@@ -201,6 +201,15 @@ export async function mountSol1(container, state) {
         '“Congrats you found a really good opportunity to show a side research opportunity on Mars based on intuition.”'
       ]
     });
+
+    await DadPhone.ring({
+      from: 'mom',
+      lines: [
+        { from: 'mom', text: 'Kiddo! Look at your spectrometer reading on those channel cores!' },
+        { from: 'dad', text: 'You found actual subsurface water ice in Neretva Vallis! Incredible intuition!' },
+        { from: 'mom', text: 'You used 1.86 kg water and 0.915 kg oxygen for the detour. Keep an eye on life support as evening approaches!' }
+      ]
+    });
   } else {
     state.choices.push('B');
     state.water = 5.58;
@@ -223,6 +232,14 @@ export async function mountSol1(container, state) {
         'You bypassed Neretva Vallis to conserve supplies.',
         'Water stays at 5.58 kg for the trip to collect the rover samples.',
         '“Missed out on a big research opportunity.”'
+      ]
+    });
+
+    await DadPhone.ring({
+      from: 'dad',
+      lines: [
+        { from: 'dad', text: 'Disciplined choice sticking to the direct path, kiddo.' },
+        { from: 'mom', text: 'Your consumables are at a steady 5.58 kg water. Smart conservatism for a long mission!' }
       ]
     });
   }
@@ -285,15 +302,13 @@ export async function mountSol1(container, state) {
 
   if (fullPath === 'AA') {
     // Stage 1 took detour (A), Stage 2 stayed in base (A in storm options = shelter)
-    // Prompt specification:
-    // AA) "You stay in the base, you are tired from the extra exercise from that day and you take that time to rest up and keep the outpost tidy during the storm in the night. But the rocks did move another half hour out of range."
     state.baseClean = true;
     state.rocksMovedMinutes = 30;
     state.communications = true;
 
     stage2OutcomeEl.innerHTML = `
       <div class="outcome">
-        <b>Path AA: Sheltered in Base (Rest & Maintenance)</b>
+        <b>Sheltered in Base (Rest & Maintenance)</b>
         <p>You stay in the base; you are tired from the extra exercise from that day and take the time to rest up and keep the outpost tidy during the storm in the night. But the rocks did move another half hour out of range.</p>
         <blockquote style="margin:8px 0; padding:10px 14px; border-left:3px solid #ff9a4d; background:#1b1b24; font-size:.9rem;">
           “EVA crews could spend a considerable portion of their day maintaining outdoor equipment, leaving less time for science or exploration.”<br>
@@ -311,10 +326,16 @@ export async function mountSol1(container, state) {
       ]
     });
 
+    await DadPhone.ring({
+      from: 'mom',
+      lines: [
+        { from: 'mom', text: 'You made the safe call staying inside during the midnight peak, sweetie.' },
+        { from: 'dad', text: 'The winds clocked at 8 m/s! The rocks shifted half an hour away, but you have strength and clean gear for tomorrow.' }
+      ]
+    });
+
   } else if (fullPath === 'AB') {
     // Stage 1 took detour (A), Stage 2 went outside (B in storm options)
-    // Prompt specification:
-    // AB) "You decide to leave to try and get the samples before the storm at the Depot you get tired but return the remaining samples using another 2.30 kg of water and 1.00 kg of oxygen leaving the total to be 2.56 kg but the interior of the base is completely dusty and communications is not operational."
     state.water = 2.56;
     state.oxygen = 0.0; // Consumed 1.00 kg from 0.865 kg remaining!
     state.depotSamples = true;
@@ -323,7 +344,7 @@ export async function mountSol1(container, state) {
 
     stage2OutcomeEl.innerHTML = `
       <div class="outcome" style="border-color:#ff5252;">
-        <b style="color:#ff5252;">Path AB: Risky Depot Retrieval in Peak Wind</b>
+        <b style="color:#ff5252;">Risky Depot Retrieval in Peak Wind</b>
         <p>You decide to leave to try and get the samples before the storm at the Depot. You get tired but return the remaining samples using another <b>2.30 kg of water</b> and <b>1.00 kg of oxygen</b> (leaving total water at <b>2.56 kg</b>).</p>
         <p style="color:#ff7043;">⚠️ The interior of the base is completely dusty and <b>communications is not operational</b>!</p>
         <blockquote style="margin:8px 0; padding:10px 14px; border-left:3px solid #00bcd4; background:#08222b; font-size:.9rem;">
@@ -342,17 +363,23 @@ export async function mountSol1(container, state) {
       ]
     });
 
+    await DadPhone.ring({
+      from: 'dad',
+      lines: [
+        { from: 'dad', text: 'Kiddo, we see the grit storm readings spiking on your beacon!' },
+        { from: 'mom', text: 'You got the samples, but communications are offline! Seal your suit airlock and scrub the dust filters immediately!' }
+      ]
+    });
+
   } else if (fullPath === 'BA') {
     // Stage 1 took direct route (B), Stage 2 sheltered in base (A)
-    // Prompt specification:
-    // BA) "You stay in the base and the rocks move another half hour travel distance away from the outpost but everything is clean in the outpost after the storm passes the night."
     state.baseClean = true;
     state.rocksMovedMinutes = 30;
     state.communications = true;
 
     stage2OutcomeEl.innerHTML = `
       <div class="outcome">
-        <b>Path BA: Sheltered in Base (Pristine Systems)</b>
+        <b>Sheltered in Base (Pristine Systems)</b>
         <p>You stay in the base and the rocks move another half hour travel distance away from the outpost, but everything is clean in the outpost after the storm passes the night.</p>
         <blockquote style="margin:8px 0; padding:10px 14px; border-left:3px solid #00bcd4; background:#08222b; font-size:.9rem;">
           “After ~21.5 h, wind speeds gradually increased, peaking with a local maximum around Midnight.”<br>
@@ -370,10 +397,16 @@ export async function mountSol1(container, state) {
       ]
     });
 
+    await DadPhone.ring({
+      from: 'dad',
+      lines: [
+        { from: 'dad', text: 'Smart discipline holding down the base, kiddo.' },
+        { from: 'mom', text: 'The storm moved the depot rocks, but your life support systems are pristine and comms are fully functional!' }
+      ]
+    });
+
   } else if (fullPath === 'BB') {
     // Stage 1 took direct route (B), Stage 2 went outside (B)
-    // Prompt specification:
-    // BB) "You go and take the risky mission to retrieve the rocks before the storm reaches its peak and succeed and use 2.3 kg of water and 1.00 kg of oxygen. But return to the base being all dirty, communications are not operational and communications not being operational."
     state.water = +(state.water - 2.3).toFixed(2); // 5.58 - 2.3 = 3.28 kg
     state.oxygen = +(Math.max(0, state.oxygen - 1.0)).toFixed(2);
     state.depotSamples = true;
@@ -382,7 +415,7 @@ export async function mountSol1(container, state) {
 
     stage2OutcomeEl.innerHTML = `
       <div class="outcome" style="border-color:#ff5252;">
-        <b style="color:#ff5252;">Path BB: Storm Sortie Success, Severe Base Infiltration</b>
+        <b style="color:#ff5252;">Storm Sortie Success, Severe Base Infiltration</b>
         <p>You go and take the risky mission to retrieve the rocks before the storm reaches its peak and succeed, using <b>2.3 kg of water</b> and <b>1.00 kg of oxygen</b>. But you return to the base being all dirty, and <b>communications are not operational</b>.</p>
         <blockquote style="margin:8px 0; padding:10px 14px; border-left:3px solid #ff9a4d; background:#1b1b24; font-size:.9rem;">
           “EVA crews could spend a considerable portion of their day maintaining outdoor equipment, leaving less time for science or exploration.”<br>
@@ -397,6 +430,14 @@ export async function mountSol1(container, state) {
         'You brave the gale and haul the depot rocks back before winds blow them away.',
         `Used 2.3 kg of water and 1.00 kg of oxygen. Water remaining: ${state.water} kg.`,
         'Fine Martian dust has fouled the habitat transceiver — telecommunications are completely down.'
+      ]
+    });
+
+    await DadPhone.ring({
+      from: 'mom',
+      lines: [
+        { from: 'mom', text: 'Kiddo, the transceiver signal cut out just after you entered the airlock!' },
+        { from: 'dad', text: 'Grit must have jammed the antenna gears. You secured the samples, but get those life support seals clean!' }
       ]
     });
   }

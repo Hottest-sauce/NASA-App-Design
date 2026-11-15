@@ -42,7 +42,6 @@ export async function mountSol2(container, state) {
 
         <div>🌡️ Temp: <b style="color:#ffb74d;">${temp.currentAvg}°C</b> <small style="opacity:.7;">(InSight)</small></div>
         <div>📡 Comms: <b style="color:${state.communications ? '#4caf50' : '#f44336'};">${state.communications ? 'ONLINE' : 'OFFLINE'}</b></div>
-        <div>📍 Path Code: <b style="color:#ffd54f;">${full3Path}</b></div>
       </div>
     `;
   }
@@ -50,7 +49,7 @@ export async function mountSol2(container, state) {
   // Descriptions and endings for all 8 paths
   const endings = {
     'AAA': {
-      title: 'Path AAA: Scientific Discovery Uplink',
+      title: 'Scientific Discovery Uplink',
       badge: '🧬 Science Pioneer',
       color: '#00bcd4',
       story: `The final trek to retrieve the wind-shifted depot rocks requires <b>2.225 kg of Oxygen</b>, but after your Neretva Vallis detour you only have <b>${state.oxygen} kg</b> left. 
@@ -58,7 +57,7 @@ export async function mountSol2(container, state) {
       status: 'Partial Sample Collection + Major Scientific Breakthrough transmitted.'
     },
     'ABA': {
-      title: 'Path ABA: Flawless Mission & Uplink',
+      title: 'Flawless Mission & Uplink',
       badge: '🏆 Golden Astronaut',
       color: '#4caf50',
       story: `You secured maximum power for the base in Sol 0 and adhered to the optimal route without unnecessary early supply drains. Even though last night's dust storm shifted the depot rocks 30 minutes away, you woke up with plenty of water (<b>${state.water} kg</b>) and oxygen (<b>${state.oxygen} kg</b>) to comfortably recover them on Day 2! 
@@ -66,7 +65,7 @@ export async function mountSol2(container, state) {
       status: '100% Core Objectives Achieved + Complete Telemetry Transmitted.'
     },
     'AAB': {
-      title: 'Path AAB: The Silent Hoard',
+      title: 'The Silent Hoard',
       badge: '📦 Resource Heavy, Comms Dark',
       color: '#ff9800',
       story: `You achieved extra power in Sol 0 and successfully recovered every sample—both the Neretva Vallis ice and the depot rocks! But rushing out into the midnight gale allowed grit to foul the dish motors. 
@@ -74,7 +73,7 @@ export async function mountSol2(container, state) {
       status: 'All Samples Secured; Telecommunications Dish Offline.'
     },
     'ABB': {
-      title: 'Path ABB: Battered But Complete',
+      title: 'Battered But Complete',
       badge: '🛠️ Field Hardened',
       color: '#ffb74d',
       story: `You started with strong power and completed the core sample retrieval in the storm. However, the midnight sortie exhausted your consumables and jammed communications with dust. 
@@ -82,7 +81,7 @@ export async function mountSol2(container, state) {
       status: 'Core Samples Secured; Transceiver Motor Jammed.'
     },
     'BAA': {
-      title: 'Path BAA: Survival on the Margins',
+      title: 'Survival on the Margins',
       badge: '⚠️ Strained Resources',
       color: '#e040fb',
       story: `By skipping manual panel calibration, your base power began at 50%. You took the Neretva Vallis detour, leaving oxygen too low to fetch the storm-shifted depot rocks. 
@@ -90,7 +89,7 @@ export async function mountSol2(container, state) {
       status: 'Ice Samples Reported; Power and Oxygen Margins Critical.'
     },
     'BAB': {
-      title: 'Path BAB: Critical Overextension',
+      title: 'Critical Overextension',
       badge: '🚨 Emergency Protocol',
       color: '#f44336',
       story: `With base power baseline at 50%, you undertook both the detour and the midnight storm run. You secured the rocks, but returned with empty oxygen tanks, fouled communications, and high dust contamination. 
@@ -98,7 +97,7 @@ export async function mountSol2(container, state) {
       status: 'Extreme Resource Depletion; Emergency Life Support Active.'
     },
     'BBA': {
-      title: 'Path BBA: Disciplined Field Operations',
+      title: 'Disciplined Field Operations',
       badge: '🧭 Methodical Scout',
       color: '#81c784',
       story: `You conserved consumables throughout Sol 1 and wisely sheltered during the storm. On Day 2, you have sufficient water and oxygen to make the extended trek for the shifted rocks. 
@@ -106,7 +105,7 @@ export async function mountSol2(container, state) {
       status: 'Systematic Recovery & Successful Flyover Uplink.'
     },
     'BBB': {
-      title: 'Path BBB: Gritty Endurance',
+      title: 'Gritty Endurance',
       badge: '🌪️ Dust Storm Survivor',
       color: '#ff7043',
       story: `You braved the storm to retrieve the rocks, but the combination of auto-mode solar power and storm infiltration left the base dusty and communications offline. 
@@ -132,7 +131,6 @@ export async function mountSol2(container, state) {
       <h2>Base Station Console — Telemetry Uplink</h2>
       <div style="background:#050c14; border:1px solid #1a365d; border-radius:10px; padding:16px; font-family:monospace; margin-bottom:14px; font-size:.9rem;">
         <div style="color:#00e5ff; margin-bottom:8px;">[MARS OUTPOST OS v4.22 // JEZERO CRATER STATION]</div>
-        <div>ACTIVE PATH CODE: <b style="color:#ffd54f;">${full3Path}</b></div>
         <div>SOL 0 SOLAR CALIBRATION: ${d1 === 'A' ? '<span style="color:#4caf50;">MANUAL (Choice 1A)</span>' : '<span style="color:#ff9800;">AUTO-MODE (Choice 1B)</span>'}</div>
         <div>SOL 1 RIVERBED DETOUR: ${d2 === 'A' ? '<span style="color:#00e5ff;">NERETVA VALLIS (Ice Collected)</span>' : '<span style="color:#bbb;">BYPASSED (Direct)</span>'}</div>
         <div>SOL 1 NIGHT STORM ACTION: ${d3 === 'A' ? '<span style="color:#4caf50;">SHELTERED (Comms Clean)</span>' : '<span style="color:#f44336;">STORM RUN (Comms Offline)</span>'}</div>
@@ -260,9 +258,9 @@ export async function mountSol2(container, state) {
 
         <!-- Level 2: All 8 Endings -->
         <div class="fc-row" style="gap:6px;">
-          ${['AAA', 'AAB', 'ABA', 'ABB', 'BAA', 'BAB', 'BBA', 'BBB'].map(pathKey => `
+          ${['AAA', 'AAB', 'ABA', 'ABB', 'BAA', 'BAB', 'BBA', 'BBB'].map((pathKey, idx) => `
             <div class="fc-node ending-node ${pathKey === full3Path ? 'active' : ''}" style="cursor:pointer;" title="Click to view outcome details" data-path="${pathKey}">
-              <div class="fc-label">${pathKey}</div>
+              <div class="fc-label">OUTCOME ${idx + 1}</div>
               <b>${pathKey === full3Path ? '★ ' + endings[pathKey].badge : endings[pathKey].badge}</b>
             </div>
           `).join('')}
@@ -322,7 +320,7 @@ export async function mountSol2(container, state) {
       <div style="border-top:1px dashed #26574a; padding-top:12px; font-size:.75rem; opacity:.85; display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px;">
         <div>
           <b>NASA Open Data Sources Referenced:</b><br>
-          • <i>Base Site Coordinates:</i> Lat 18.97278° N, Lon 77.60234° E (Jezero Crater Exploration Outpost)<br>
+          • <i>Base Site Coordinates:</i> Lat 17.80514° N, Lon 75.99765° E (Jezero Crater Exploration Outpost)<br>
           • <i>InSight Weather API (api.nasa.gov):</i> Sol temperatures (${temp.currentAvg}°C avg, ${temp.currentMin}°C min, ${temp.currentMax}°C max)<br>
           • <i>JPL Horizons & GISS Mars24:</i> Sun position (Elevation: ${sun.elevation}°, Azimuth: ${sun.azimuth}°)<br>
           • <i>InSight & Perseverance MEDA:</i> Near-surface diurnal wind velocity patterns in Jezero Crater (Viúdez-Moreiras et al.)<br>
@@ -373,14 +371,14 @@ export async function mountSol2(container, state) {
     window.location.reload();
   };
 
-  // Final DadPhone call
+  // Final DadPhone call (Mom & Dad celebrate together)
   if (state.communications) {
     await DadPhone.ring({
       from: 'dad',
       lines: [
-        'Kiddo! We just received your uplink packet while en route back to base!',
-        `Your telemetry log came through loud and clear on Path ${full3Path}.`,
-        'We are so proud of how you held down the outpost. See you at the airlock in 20 minutes!'
+        { from: 'dad', text: 'Kiddo! We just received your uplink packet while en route back to base!' },
+        { from: 'mom', text: 'The telemetry log and research data came through loud and clear! Houston already confirmed receipt!' },
+        { from: 'dad', text: 'We are so proud of how you held down the outpost. We see the habitat lights ahead—see you at the airlock in 20 minutes!' }
       ]
     });
   } else {
@@ -390,6 +388,13 @@ export async function mountSol2(container, state) {
         'Satellite passes overhead, but the dish drive motors remain jammed from last night\'s storm.',
         'Data saved locally to station hard drives.',
         'Dust plumes in the distance signal your parents\' rover approaching the airlock. You survived your days on Mars!'
+      ]
+    });
+    await DadPhone.ring({
+      from: 'mom',
+      lines: [
+        { from: 'mom', text: 'Kiddo! We just pulled up to the outer airlock hatch! Cycle the pressurization when ready!' },
+        { from: 'dad', text: 'We saw the dish was down from the grit gale—you made the right executive calls protecting habitat life support. We\'re home!' }
       ]
     });
   }

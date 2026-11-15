@@ -47,8 +47,13 @@ export function triggerSkip() {
     window.__skipActiveCutscene();
   }
 
+  // 4. Skip active minigame if running
+  if (window.__skipActiveMinigame && typeof window.__skipActiveMinigame === 'function') {
+    window.__skipActiveMinigame();
+  }
+
   // Visual confirmation HUD notification
-  showToastNotification('⚡ SECRET CODE: UP UP DOWN LEFT RIGHT UP — SKIPPING CUTSCENES & TRANSMISSIONS');
+  showToastNotification('⚡ SECRET CODE: UP UP DOWN LEFT RIGHT UP — SKIPPING MINIGAME & CUTSCENES');
 }
 
 function showToastNotification(msg) {

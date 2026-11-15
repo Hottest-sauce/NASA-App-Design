@@ -18,8 +18,8 @@ export const GameState = {
       temperature: null,     // NASA InSight weekly & current temperature data
       sunAngle: null,        // NASA JPL / GISS Martian Sun elevation & azimuth
       baseLocation: {
-        lat: 18.97278,
-        lon: 77.60234,
+        lat: 17.80514,
+        lon: 75.99765,
         site: 'Jezero Crater Outpost',
       },
     };
