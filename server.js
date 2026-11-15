@@ -6,7 +6,7 @@ const PORT = 3000;
 
 const server = http.createServer((req, res) => {
     // Default root URL loads index.html
-    let filePath = req.url === '/' ? './dad-phone-demo.html' : '.' + req.url;
+    let filePath = req.url === '/' ? './Solar Alignment.html' : '.' + decodeURIComponent(req.url);
     let extname = path.extname(filePath);
     
     let contentTypes = {
@@ -17,7 +17,7 @@ const server = http.createServer((req, res) => {
         '.jpg': 'image/jpeg'
     };
 
-    let contentType = contentTypes[extname] || 'application/octet-st~ream';
+    let contentType = contentTypes[extname] || 'application/octet-stream';
 
     fs.readFile(filePath, (error, content) => {
         if (error) {

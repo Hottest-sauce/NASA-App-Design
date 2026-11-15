@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Perseverance Challenge — Act 1</title>
+<style>
+:root{--bg:#0d1b2a;--fg:#e0f7fa;--card:#112233;--line:#26574a;--accent:#00bcd4;box-sizing:border-box}
+*{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,sans-serif;min-height:100dvh}
+.w{max-width:740px;margin:0 auto;padding:24px 16px}
+h1{margin:0 0 4px;font-size:1.5rem;color:var(--accent)}
+h2{margin:18px 0 6px;font-size:1.1rem;color:#80cbc4}
+.subtitle{font-size:.85rem;opacity:.65;margin-bottom:18px}
+.scene{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+.scene p{margin:6px 0}
+.choices{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.choice-btn{background:linear-gradient(135deg,#004d40,#00695c);color:#e0f7fa;border:2px solid #00bcd4;border-radius:12px;padding:14px 18px;font:700 1rem/1.4 system-ui,sans-serif;cursor:pointer;text-align:left;transition:background .2s,box-shadow .2s}
+.choice-btn:hover{background:linear-gradient(135deg,#00695c,#00897b);box-shadow:0 0 18px #00bcd444}
+.choice-btn:active{transform:scale(.98)}
+.choice-btn .label{color:#80cbc4;font-size:.75rem;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:4px}
+.outcome{background:#0a2e26;border:1px solid #26574a;border-radius:12px;padding:14px 18px;margin-top:14px;animation:fade-in .4s ease-out}
+.outcome b{color:#00e5ff}
+.outcome .tip{margin-top:8px;padding:8px 12px;background:#112a3a;border-left:3px solid #ff9a4d;border-radius:0 8px 8px 0;font-size:.9rem}
+.outcome .tip span{color:#ff9a4d;font-weight:700}
+.hidden{display:none}
+@keyframes fade-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+</style></head><body><div class="w">
+<h1>🔴 Perseverance Challenge</h1>
+<p class="subtitle">Act 1 · Morning Prep & Outpost Calibration</p>
+
+<div class="scene" id="intro-scene">
+  <p>The sun is rising over <b>Jezero Crater</b>. Your family was selected as the first family on Mars. Your parents are out on a multi-day mission, and you have to hold down the fort on your own.</p>
+  <p>Before heading out to retrieve <b>Perseverance's sample tubes</b>, you need to prepare the habitat.</p>
+</div>
+
+<div class="scene" id="node1">
+  <h2>Node 1.0 — Morning Power & Habitat Check</h2>
+  <p>Your habitat's power is low, and your indoor potato crops need water. The sun is rising — what do you do?</p>
+
+  <div class="choices" id="choices">
+    <button class="choice-btn" id="btn-1a">
+      <span class="label">Choice 1A — Solar Alignment</span>
+      Spend 30 minutes aligning the solar panels toward the sun using the visual angle slider.
+    </button>
+    <button class="choice-btn" id="btn-1b">
+      <span class="label">Choice 1B — Quick Start</span>
+      Leave the panels on auto-mode and rush out the airlock early to beat the heat.
+    </button>
+  </div>
+
+  <div class="outcome hidden" id="outcome-1a">
+    <b>+25% Base Power!</b>
+    <p>The panels lock onto the sun and your batteries begin charging. The habitat hums to life — lights brighten and the water pump kicks on for the potato beds.</p>
+    <div class="tip"><span>📞 Dad-Phone Tip:</span> "Solar panels make power from sunlight, so pointing them right at the sun charges our batteries faster!"</div>
+    <p style="margin-top:12px"><a href="Solar Alignment.html" style="color:#00e5ff;font-weight:700">▶ Play the Solar Alignment Minigame</a></p>
+  </div>
+
+  <div class="outcome hidden" id="outcome-1b">
+    <b>Base Power stays at 50%.</b>
+    <p>The panels stay on auto-mode — they're not perfectly aimed, so power trickles in slowly. Indoor systems may struggle later, but you gain <b>+30 minutes of daylight</b> for your rover trek.</p>
+    <p style="opacity:.7;font-size:.9rem">⚠️ Low power may cause problems down the road…</p>
+  </div>
+</div>
+
+</div>
+<script type="module">
+import { DadPhone } from './dadphone.js';
+
+// Register a teal narrator — no specific character, just the story voice
+DadPhone.registerCharacter('narrator', {
+  name: 'Mission Log',
+  avatar: '🔴',
+  color: '#00bcd4',   // teal
+  speed: 22,
+  pitch: 260,
+  wave: 'sine',
+  mustache: false
+});
+
+// On load, narrate Act 1 intro using .say (no ring, opens straight away)
+DadPhone.say({
+  from: 'narrator',
+  lines: [
+    'Good morning, astronaut. The sun is rising over Jezero Crater on Mars.',
+    'Your parents left yesterday on a multi-day survey mission. You are on your own at the outpost.',
+    'Before heading out to retrieve Perseverance\'s sample tubes, you must prepare the habitat.',
+    'Your habitat\'s power is dangerously low — and your indoor potato crops are getting thirsty.',
+    'Check the control panel and decide: align the solar panels manually, or rush out early to beat the heat.'
+  ]
+});
+
+// Wire up the choice buttons
+const choices  = document.getElementById('choices');
+const outcome1a = document.getElementById('outcome-1a');
+const outcome1b = document.getElementById('outcome-1b');
+
+document.getElementById('btn-1a').addEventListener('click', async () => {
+  choices.classList.add('hidden');
+  outcome1a.classList.remove('hidden');
+
+  await DadPhone.say({
+    from: 'narrator',
+    lines: [
+      'You step up to the solar array controls and begin adjusting the panels toward the rising sun.',
+      'After 30 minutes of careful alignment, the batteries are charging at full capacity.',
+      '+25% Base Power. The habitat systems are stable.'
+    ]
+  });
+
+  // Then Dad calls with his tip
+  await DadPhone.ring({
+    from: 'dad',
+    lines: [
+      'Hey kiddo! I can see from the telemetry that you got the panels aligned. Nice work!',
+      'Solar panels make power from sunlight, so pointing them right at the sun charges our batteries faster!',
+      'Now head out and grab those Perseverance sample tubes. Be careful out there!'
+    ]
+  });
+});
+
+document.getElementById('btn-1b').addEventListener('click', async () => {
+  choices.classList.add('hidden');
+  outcome1b.classList.remove('hidden');
+
+  await DadPhone.say({
+    from: 'narrator',
+    lines: [
+      'You leave the panels on auto-mode and rush toward the airlock.',
+      'Base power holds at 50%. The potato beds will have to wait.',
+      'You gain 30 extra minutes of daylight for the trek ahead — but the habitat may struggle later.'
+    ]
+  });
+});
+</script></body></html>
