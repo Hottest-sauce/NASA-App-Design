@@ -1,13 +1,17 @@
 // sols/sol-0.js — Act 1: Morning Prep, FNAF Habitat Hub & Solar Calibration
 import { DadPhone } from '../shared/dadphone.js';
 import { mountSolarAlignment } from '../minigames/solar-alignment.js';
+import { playCutscene } from '../shared/video-player.js';
 
 export async function mountSol0(container, state) {
+  const temp = state.temperature || { currentAvg: -64.2, currentMin: -97.1, currentMax: -15.3, latestSol: '1222' };
+  const sun = state.sunAngle || { elevation: 36.4, azimuth: 108.2 };
+
   // Render the initial FNAF Habitat Hub Monitor
   container.innerHTML = `
     <div class="scene">
       <h1>🔴 Perseverance Challenge</h1>
-      <p class="subtitle">Act 1 · Sol 0 Morning Prep (Jezero Crater Outpost Hub)</p>
+      <p class="subtitle">Act 1 · Sol 0 Morning Prep (Jezero Crater Outpost [18.97° N, 77.60° E])</p>
       <p>Your family was selected as the first human family on Mars. With your parents away on an expedition, you are in command of the Jezero Outpost. Before heading out to retrieve <b>Perseverance's sample tubes</b>, monitor and calibrate your base systems from the central habitat console.</p>
     </div>
 
@@ -15,7 +19,8 @@ export async function mountSol0(container, state) {
     <div class="hab-monitor" id="hab-hub">
       <div class="hab-screen-header">
         <span>SECURITY FEED // OUTPOST JEZERO-1</span>
-        <span id="hab-clock">SOL 0 · 06:15 LOCAL SOLAR TIME</span>
+        <span>🌡️ EXT TEMP: <b style="color:#ffb74d;">${temp.currentAvg}°C</b> (NASA InSight)</span>
+        <span>☀️ SUN ELEV: <b style="color:#ffd54f;">${sun.elevation}°</b></span>
         <span>⚡ POWER: <b id="header-power">${state.power}%</b></span>
       </div>
 
@@ -75,15 +80,15 @@ export async function mountSol0(container, state) {
         viewscreen.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <b style="color:#ff9a4d; font-size:1.05rem;">☀️ CAM 01: EXTERIOR SOLAR ARRAY</b>
-            <span style="font-family:monospace; color:#ffd54f;">ALIGNMENT: AUTO (UNALIGNED)</span>
+            <span style="font-family:monospace; color:#ffd54f;">SUN AZ: ${sun.azimuth}° | EL: ${sun.elevation}°</span>
           </div>
-          <p>The sun is rising over Jezero Crater. The photovoltaic panel is idling on auto-mode. Battery reserves are currently at <b>${state.power}%</b>.</p>
-          <p style="font-size:.9rem; color:#80cbc4;">Calibrating the panel angles manually captures max sunlight, charging batteries faster so water pumps can hydrate the indoor potato crops.</p>
+          <p>The sun is rising over Jezero Crater (Outside: <b>${temp.currentAvg}°C</b>). The photovoltaic panel is currently unaligned on auto-mode. Battery reserves are at <b>${state.power}%</b>.</p>
+          <p style="font-size:.88rem; color:#80cbc4;">Calibrating the panel angles toward NASA's ephemeris coordinates captures max solar flux, charging batteries faster so water pumps can hydrate the indoor potato crops.</p>
 
           <div class="choices" style="margin-top:14px;">
             <button class="choice-btn" id="hub-btn-1a">
               <span class="label">Option 1A — Engage Manual Alignment Minigame</span>
-              Aim the panel directly toward the rising Sun. (Risk: &lt;30% incurs -15% motor drain penalty; 100% gives +25% power).
+              Align the panel with the Sun's real-time position. (Risk: &lt;30% incurs -15% motor drain penalty; 100% gives +25% power).
             </button>
             <button class="choice-btn" id="hub-btn-1b">
               <span class="label">Option 1B — Quick Start (Leave Auto-Mode)</span>
@@ -98,7 +103,7 @@ export async function mountSol0(container, state) {
             <b style="color:#00e5ff; font-size:1.05rem;">☀️ CAM 01: EXTERIOR SOLAR ARRAY [CALIBRATED]</b>
             <span style="font-family:monospace; color:#4caf50;">STATUS: ACTIVE</span>
           </div>
-          <p>Solar calibration sequence completed. Total Habitat Power: <b style="color:#00e5ff; font-size:1.1rem;">${state.power}%</b>.</p>
+          <p>Solar calibration sequence completed based on NASA sun trajectory. Total Habitat Power: <b style="color:#00e5ff; font-size:1.1rem;">${state.power}%</b>.</p>
           <div class="tip" style="margin-top:10px;">
             <span>📋 System Status:</span> Power is being routed to the life support distribution grid and the hydroponics pumps. Check <b>CAM 04 (Airlock)</b> to cycle through to your mission!
           </div>
@@ -110,9 +115,10 @@ export async function mountSol0(container, state) {
           <b style="color:#81c784; font-size:1.05rem;">🥔 CAM 02: HYDROPONICS GROW DOME</b>
           <span style="font-family:monospace; color:#81c784;">BIOLOGY OSDR-44</span>
         </div>
-        <p>Indoor potato crops are monitored under LED grow lighting. Real NASA Open Science Data (OSDR) shows Martian greenhouse crops require precise photoperiods and steady hydration.</p>
+        <p>Indoor potato crops are insulated against the harsh Martian exterior (<b>${temp.currentAvg}°C</b>, Low: <b>${temp.currentMin}°C</b>, High: <b>${temp.currentMax}°C</b> from NASA InSight data). Grow lamps require steady electrical wattage.</p>
         <div style="background:#030810; padding:10px 14px; border-radius:8px; border:1px solid #1a365d; font-family:monospace; font-size:.85rem; margin-top:8px;">
           <div>SOIL HYDRATION: <b style="color:${state.power >= 55 ? '#4caf50' : '#ff9800'};">${state.power >= 55 ? 'OPTIMAL (Pumps Powered)' : 'DEFICIT (Awaiting Power)'}</b></div>
+          <div>DOME THERMAL SHIELD: <b style="color:#00e5ff;">+19.2°C (Controlled)</b> vs Exterior ${temp.currentAvg}°C</div>
           <div>GROW LIGHTS: <b style="color:${state.power >= 50 ? '#00e5ff' : '#f44336'};">${state.power >= 50 ? 'NOMINAL' : 'LOW POWER SURGE'}</b></div>
           <div>TARGET HARVEST: Sol 45 (Essential for long-term crew food security)</div>
         </div>
@@ -123,11 +129,12 @@ export async function mountSol0(container, state) {
           <b style="color:#64b5f6; font-size:1.05rem;">📡 CAM 03: DEEP SPACE TELECOMMUNICATIONS DISH</b>
           <span style="font-family:monospace; color:#4caf50;">STATUS: TRACKING</span>
         </div>
-        <p>The high-gain parabolic antenna is calibrated toward Mars Reconnaissance Orbiter (MRO) relays and NASA's Deep Space Network.</p>
+        <p>The high-gain parabolic antenna is aligned toward Mars orbiters and NASA's Deep Space Network.</p>
         <div style="background:#030810; padding:10px 14px; border-radius:8px; border:1px solid #1a365d; font-family:monospace; font-size:.85rem; margin-top:8px;">
+          <div>BASE LOCATION: <b>18.97278° N, 77.60234° E</b> (Jezero Crater)</div>
           <div>EARTH-MARS LIGHT DELAY: <b>~14.2 MINUTES</b></div>
-          <div>ANTENNA MOTOR HEALTH: <b style="color:#4caf50;">100% (Clean)</b></div>
-          <div>NEXT SATELLITE FLYOVER WINDOW: Sol 2 Dawn Pass</div>
+          <div>ATMOSPHERIC PRESSURE: <b>${temp.currentPressure || 742} Pa</b> (InSight MEDA)</div>
+          <div>SESSION TELEMETRY CACHE: <b>SYNCHRONIZED (UTC)</b></div>
         </div>
       `;
     } else if (cam === 'airlock') {
@@ -137,7 +144,7 @@ export async function mountSol0(container, state) {
             <b style="color:#ffb74d; font-size:1.05rem;">🚪 CAM 04: AIRLOCK & ROVER BAY</b>
             <span style="font-family:monospace; color:#ff9800;">PREPARATION REQUIRED</span>
           </div>
-          <p>The pressurized exploration rover is docked. Exploration gear is prepped with 11 kg water and 3.5 kg oxygen for the Jezero Crater trek.</p>
+          <p>The pressurized exploration rover is docked. Outside temperature is cold at <b>${temp.currentAvg}°C</b>. Exploration gear is prepped with 11 kg water and 3.5 kg oxygen for the Jezero Crater trek.</p>
           <p style="color:#ffb74d;">⚠️ <i>Habitat power check is required before cycling the main airlock door. Select <b>CAM 01 (Solar Array)</b> to calibrate or initiate quick start.</i></p>
         `;
       } else {
@@ -146,14 +153,18 @@ export async function mountSol0(container, state) {
             <b style="color:#4caf50; font-size:1.05rem;">🚪 CAM 04: AIRLOCK & ROVER BAY [READY]</b>
             <span style="font-family:monospace; color:#4caf50;">CLEARANCE GRANTED</span>
           </div>
-          <p>The outpost systems are stabilized. The rover airlock is pressurized and ready for egress into Jezero Crater.</p>
+          <p>The outpost systems are stabilized. The rover airlock is pressurized and cleared for egress into Jezero Crater.</p>
           <button class="choice-btn" id="hub-btn-depart" style="margin-top:14px; background:linear-gradient(135deg,#00695c,#00897b); font-size:1.05rem;">
             🚪 Cycle Airlock & Depart for Jezero Crater (Begin Sol 1 Trek) →
           </button>
         `;
         const departBtn = viewscreen.querySelector('#hub-btn-depart');
         if (departBtn) {
-          departBtn.onclick = () => resolveDeparture();
+          departBtn.onclick = async () => {
+            // Play leaving base cutscene video before departing for Sol 1
+            await playCutscene('assets/videos/Leaving Base Video.mp4', 'Airlock Depressurization & Egress');
+            resolveDeparture();
+          };
         }
       }
     }
@@ -169,8 +180,8 @@ export async function mountSol0(container, state) {
     from: 'narrator',
     lines: [
       'Welcome to the Jezero Outpost Habitat Console.',
-      'Your parents are on an exploration mission; you have command of the base.',
-      'Check your station feeds. Select CAM 01 to address the habitat power level.'
+      `Live NASA telemetry synchronized: Outside temperature is ${temp.currentAvg}°C.`,
+      'Check your station feeds. Select CAM 01 to align panels with the Sun\'s position.'
     ]
   });
 
@@ -187,11 +198,18 @@ export async function mountSol0(container, state) {
       btn1A.onclick = async () => {
         state.choices.push('1A');
 
+        // Play Solar Panel cutscene video before starting minigame
+        await playCutscene('assets/videos/Solar Panel Video.mp4', 'Solar Array Calibration Deployment');
+
         // Hide Habitat Hub monitor temporarily to focus on minigame
         habHubEl.classList.add('hidden');
 
-        // Mount the solar minigame into the dedicated container
-        const result = await mountSolarAlignment(minigameMount, { intro: true, outro: true });
+        // Mount the solar minigame with the live NASA Sun Angle
+        const result = await mountSolarAlignment(minigameMount, {
+          intro: true,
+          outro: true,
+          sunAngle: state.sunAngle,
+        });
 
         // Update power state
         state.power = Math.max(0, state.power + result.powerBonus);
@@ -223,10 +241,8 @@ export async function mountSol0(container, state) {
         airlockStatusEl.textContent = 'Status: Cleared for Egress';
         airlockStatusEl.style.color = '#4caf50';
 
-        // Re-render the solar camera with the completed state
         renderCamView('solar');
 
-        // DadPhone call reflecting post-game habitat hub state
         if (result.failed) {
           await DadPhone.say({
             from: 'narrator',
@@ -241,7 +257,7 @@ export async function mountSol0(container, state) {
             from: 'narrator',
             lines: [
               'Returning to the Habitat Hub.',
-              `Power level updated to ${state.power}%. Water pumps and grow lamps are running smoothly.`,
+              `Power level updated to ${state.power}%. Solar trajectory aligned with NASA ephemeris.`,
               'Outpost prep complete! Switch to CAM 04 (Airlock) to begin your Sol 1 trek.'
             ]
           });

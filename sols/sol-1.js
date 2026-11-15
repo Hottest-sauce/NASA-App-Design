@@ -2,14 +2,17 @@
 import { DadPhone } from '../shared/dadphone.js';
 
 export async function mountSol1(container, state) {
+  const temp = state.temperature || { currentAvg: -64.2, currentMin: -97.1, currentMax: -15.3, latestSol: '1222' };
+
   function renderHUD() {
     return `
       <div style="background:#0a192f; border:1px solid #1f4068; border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; flex-wrap:wrap; gap:14px; font-size:.88rem; align-items:center;">
         <div>⚡ Base Power: <b style="color:#00e5ff;">${state.power}%</b></div>
         <div>💧 Water: <b style="color:#64b5f6;">${state.water} kg</b></div>
         <div>🫁 Oxygen: <b style="color:#81c784;">${state.oxygen} kg</b></div>
+        <div>🌡️ Temp: <b style="color:#ffb74d;">${temp.currentAvg}°C</b> <small style="opacity:.7;">(InSight)</small></div>
         <div>📡 Comms: <b style="color:${state.communications ? '#4caf50' : '#f44336'};">${state.communications ? 'ONLINE' : 'OFFLINE'}</b></div>
-        <div>🧪 Research: <b style="color:#ffb74d;">${state.research} MB</b></div>
+        <div>🧪 Research: <b style="color:#ffd54f;">${state.research} MB</b></div>
       </div>
     `;
   }

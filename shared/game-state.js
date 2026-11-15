@@ -15,7 +15,13 @@ export const GameState = {
       baseClean: true,       // true = clean, false = dusty/dirty
       rocksMovedMinutes: 0,  // distance rocks were displaced by storm
       path: '',              // e.g. 'AA', 'AB', 'BA', 'BB'
+      temperature: null,     // NASA InSight weekly & current temperature data
+      sunAngle: null,        // NASA JPL / GISS Martian Sun elevation & azimuth
+      baseLocation: {
+        lat: 18.97278,
+        lon: 77.60234,
+        site: 'Jezero Crater Outpost',
+      },
     };
   },
 };
-

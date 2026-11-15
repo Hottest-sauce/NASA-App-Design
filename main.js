@@ -1,5 +1,6 @@
 // main.js — Main Game Runner & Sequence Controller
 import { GameState } from './shared/game-state.js';
+import { initializeOutpostTelemetry } from './shared/nasa-api.js';
 import { mountSol0 } from './sols/sol-0.js';
 import { mountSol1 } from './sols/sol-1.js';
 import { mountSol2 } from './sols/sol-2.js';
@@ -7,6 +8,11 @@ import { mountSol2 } from './sols/sol-2.js';
 async function runGame() {
   const app = document.getElementById('app');
   const state = GameState.create();
+
+  // 1. Initial NASA API telemetry sync (Cached per session; non-intrusive loading if >1s)
+  const telemetry = await initializeOutpostTelemetry();
+  state.temperature = telemetry.temperature;
+  state.sunAngle = telemetry.sunAngle;
 
   // Sol 0 (Act 1: Morning Prep & Solar Alignment)
   await mountSol0(app, state);

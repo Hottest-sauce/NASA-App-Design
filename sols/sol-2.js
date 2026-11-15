@@ -2,6 +2,9 @@
 import { DadPhone } from '../shared/dadphone.js';
 
 export async function mountSol2(container, state) {
+  const temp = state.temperature || { currentAvg: -64.2, currentMin: -97.1, currentMax: -15.3, latestSol: '1222' };
+  const sun = state.sunAngle || { elevation: 36.4, azimuth: 108.2 };
+
   // Determine 3-letter path from previous decisions:
   // Decision 1 (Sol 0): 1A -> 'A', 1B -> 'B'
   // Decision 2 (Sol 1): 'A' or 'B'
@@ -18,6 +21,7 @@ export async function mountSol2(container, state) {
         <div>⚡ Base Power: <b style="color:#00e5ff;">${state.power}%</b></div>
         <div>💧 Water: <b style="color:#64b5f6;">${state.water} kg</b></div>
         <div>🫁 Oxygen: <b style="color:#81c784;">${state.oxygen} kg</b></div>
+        <div>🌡️ Temp: <b style="color:#ffb74d;">${temp.currentAvg}°C</b> <small style="opacity:.7;">(InSight)</small></div>
         <div>📡 Comms: <b style="color:${state.communications ? '#4caf50' : '#f44336'};">${state.communications ? 'ONLINE' : 'OFFLINE'}</b></div>
         <div>📍 Path Code: <b style="color:#ffd54f;">${full3Path}</b></div>
       </div>
@@ -299,6 +303,9 @@ export async function mountSol2(container, state) {
       <div style="border-top:1px dashed #26574a; padding-top:12px; font-size:.75rem; opacity:.85; display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px;">
         <div>
           <b>NASA Open Data Sources Referenced:</b><br>
+          • <i>Base Site Coordinates:</i> Lat 18.97278° N, Lon 77.60234° E (Jezero Crater Exploration Outpost)<br>
+          • <i>InSight Weather API (api.nasa.gov):</i> Sol temperatures (${temp.currentAvg}°C avg, ${temp.currentMin}°C min, ${temp.currentMax}°C max)<br>
+          • <i>JPL Horizons & GISS Mars24:</i> Sun position (Elevation: ${sun.elevation}°, Azimuth: ${sun.azimuth}°)<br>
           • <i>InSight & Perseverance MEDA:</i> Near-surface diurnal wind velocity patterns in Jezero Crater (Viúdez-Moreiras et al.)<br>
           • <i>NASA NTRS 20190027563:</i> Dust storm impacts on human Mars exploration and outdoor equipment maintenance (M.A. Rucker)<br>
           • <i>NASA OSDR:</i> Plant photoperiods and crop hydration requirements in Martian greenhouse analogues
