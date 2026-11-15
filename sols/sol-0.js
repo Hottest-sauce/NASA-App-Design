@@ -180,7 +180,7 @@ export async function mountSol0(container, state) {
     from: 'narrator',
     lines: [
       'Welcome to the Jezero Outpost Habitat Console.',
-      `Live NASA telemetry synchronized: Outside temperature is ${temp.currentAvg}°C.`,
+      `Live NASA connection synchronized: Outside temperature is ${temp.currentAvg}°C.`,
       'Check your station feeds. Select CAM 01 to align panels with the Sun\'s position.'
     ]
   });
