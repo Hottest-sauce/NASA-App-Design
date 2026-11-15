@@ -100,19 +100,19 @@ export async function mountSol0(container, state) {
       } else {
         viewscreen.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <b style="color:#00e5ff; font-size:1.05rem;">☀️ CAM 01: EXTERIOR SOLAR ARRAY [CALIBRATED]</b>
+            <b style="color:#00e5ff; font-size:1.05rem;">☀️ CAM 01: EXTERIOR SOLAR POWER [CALIBRATED]</b>
             <span style="font-family:monospace; color:#4caf50;">STATUS: ACTIVE</span>
           </div>
           <p>Solar calibration sequence completed based on NASA sun trajectory. Total Habitat Power: <b style="color:#00e5ff; font-size:1.1rem;">${state.power}%</b>.</p>
           <div class="tip" style="margin-top:10px;">
-            <span>📋 System Status:</span> Power is being routed to the life support distribution grid and the hydroponics pumps. Check <b>CAM 04 (Airlock)</b> to cycle through to your mission!
+            <span>📋 System Status:</span> Power is being routed to life support and the water pumps. Check <b>CAM 04 (Airlock)</b> to cycle through to your mission!
           </div>
         `;
       }
     } else if (cam === 'hydro') {
       viewscreen.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <b style="color:#81c784; font-size:1.05rem;">🥔 CAM 02: HYDROPONICS GROW DOME</b>
+          <b style="color:#81c784; font-size:1.05rem;">🥔 CAM 02: PLANT GROW DOME</b>
           <span style="font-family:monospace; color:#81c784;">BIOLOGY OSDR-44</span>
         </div>
         <p>Indoor potato crops are insulated against the harsh Martian exterior (<b>${temp.currentAvg}°C</b>, Low: <b>${temp.currentMin}°C</b>, High: <b>${temp.currentMax}°C</b> from NASA InSight data). Grow lamps require steady electrical wattage.</p>
