@@ -28,7 +28,7 @@ export async function mountSol0(container, state) {
       <div class="hab-cam-grid">
         <button class="hab-cam-btn active" data-cam="solar">
           <span class="cam-id">CAM 01</span>
-          <span class="cam-title">☀️ Solar Array</span>
+          <span class="cam-title">☀️ Solar Power</span>
           <span class="cam-status" id="status-cam-solar">Efficiency: Baseline (50%)</span>
         </button>
 
@@ -40,13 +40,13 @@ export async function mountSol0(container, state) {
 
         <button class="hab-cam-btn" data-cam="comms">
           <span class="cam-id">CAM 03</span>
-          <span class="cam-title">📡 Comms Array</span>
+          <span class="cam-title">📡 Comms </span>
           <span class="cam-status">Dish: Operational (Online)</span>
         </button>
 
         <button class="hab-cam-btn" data-cam="airlock">
           <span class="cam-id">CAM 04</span>
-          <span class="cam-title">🚪 Airlock & Rover</span>
+          <span class="cam-title">🚪 Oxygen & Rover</span>
           <span class="cam-status" id="status-cam-airlock">Status: Prep Incomplete</span>
         </button>
       </div>
@@ -82,8 +82,8 @@ export async function mountSol0(container, state) {
             <b style="color:#ff9a4d; font-size:1.05rem;">☀️ CAM 01: EXTERIOR SOLAR ARRAY</b>
             <span style="font-family:monospace; color:#ffd54f;">SUN AZ: ${sun.azimuth}° | EL: ${sun.elevation}°</span>
           </div>
-          <p>The sun is rising over Jezero Crater (Outside: <b>${temp.currentAvg}°C</b>). The photovoltaic panel is currently unaligned on auto-mode. Battery reserves are at <b>${state.power}%</b>.</p>
-          <p style="font-size:.88rem; color:#80cbc4;">Calibrating the panel angles toward NASA's ephemeris coordinates captures max solar flux, charging batteries faster so water pumps can hydrate the indoor potato crops.</p>
+          <p>The sun is rising over Jezero Crater (Outside: <b>${temp.currentAvg}°C</b>). The solar panel is currently unaligned on auto-mode. Battery reserves are at <b>${state.power}%</b>.</p>
+          <p style="font-size:.88rem; color:#80cbc4;">Calibrating the panel angles toward NASA's solar panel captures max solar flux, charging batteries faster so water pumps can hydrate the indoor potato crops.</p>
 
           <div class="choices" style="margin-top:14px;">
             <button class="choice-btn" id="hub-btn-1a">
@@ -92,7 +92,7 @@ export async function mountSol0(container, state) {
             </button>
             <button class="choice-btn" id="hub-btn-1b">
               <span class="label">Option 1B — Quick Start (Leave Auto-Mode)</span>
-              Leave panels on auto-mode and head straight to the airlock. Power stays at 50%, but you gain +30 min daylight.
+              Leave panels on auto-mode and head straight to the oxygen system. Power stays at 50%, but you gain +30 min daylight.
             </button>
           </div>
         `;
@@ -100,25 +100,25 @@ export async function mountSol0(container, state) {
       } else {
         viewscreen.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <b style="color:#00e5ff; font-size:1.05rem;">☀️ CAM 01: EXTERIOR SOLAR ARRAY [CALIBRATED]</b>
+            <b style="color:#00e5ff; font-size:1.05rem;">☀️ CAM 01: EXTERIOR SOLAR POWER [CALIBRATED]</b>
             <span style="font-family:monospace; color:#4caf50;">STATUS: ACTIVE</span>
           </div>
           <p>Solar calibration sequence completed based on NASA sun trajectory. Total Habitat Power: <b style="color:#00e5ff; font-size:1.1rem;">${state.power}%</b>.</p>
           <div class="tip" style="margin-top:10px;">
-            <span>📋 System Status:</span> Power is being routed to the life support distribution grid and the hydroponics pumps. Check <b>CAM 04 (Airlock)</b> to cycle through to your mission!
+            <span>📋 System Status:</span> Power is being routed to life support and the water pumps. Check <b>CAM 04 (Airlock)</b> to cycle through to your mission!
           </div>
         `;
       }
     } else if (cam === 'hydro') {
       viewscreen.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <b style="color:#81c784; font-size:1.05rem;">🥔 CAM 02: HYDROPONICS GROW DOME</b>
+          <b style="color:#81c784; font-size:1.05rem;">🥔 CAM 02: PLANT GROW DOME</b>
           <span style="font-family:monospace; color:#81c784;">BIOLOGY OSDR-44</span>
         </div>
-        <p>Indoor potato crops are insulated against the harsh Martian exterior (<b>${temp.currentAvg}°C</b>, Low: <b>${temp.currentMin}°C</b>, High: <b>${temp.currentMax}°C</b> from NASA InSight data). Grow lamps require steady electrical wattage.</p>
+        <p>Indoor potato crops are protected against the harsh Martian exterior (<b>${temp.currentAvg}°C</b>, Low: <b>${temp.currentMin}°C</b>, High: <b>${temp.currentMax}°C</b> from NASA InSight data). Grow lamps require steady electrical wattage.</p>
         <div style="background:#030810; padding:10px 14px; border-radius:8px; border:1px solid #1a365d; font-family:monospace; font-size:.85rem; margin-top:8px;">
           <div>SOIL HYDRATION: <b style="color:${state.power >= 55 ? '#4caf50' : '#ff9800'};">${state.power >= 55 ? 'OPTIMAL (Pumps Powered)' : 'DEFICIT (Awaiting Power)'}</b></div>
-          <div>DOME THERMAL SHIELD: <b style="color:#00e5ff;">+19.2°C (Controlled)</b> vs Exterior ${temp.currentAvg}°C</div>
+          <div>DOME HEATING SHIELD: <b style="color:#00e5ff;">+19.2°C (Controlled)</b> vs Exterior ${temp.currentAvg}°C</div>
           <div>GROW LIGHTS: <b style="color:${state.power >= 50 ? '#00e5ff' : '#f44336'};">${state.power >= 50 ? 'NOMINAL' : 'LOW POWER SURGE'}</b></div>
           <div>TARGET HARVEST: Sol 45 (Essential for long-term crew food security)</div>
         </div>
@@ -141,21 +141,21 @@ export async function mountSol0(container, state) {
       if (!solarCalibrated) {
         viewscreen.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <b style="color:#ffb74d; font-size:1.05rem;">🚪 CAM 04: AIRLOCK & ROVER BAY</b>
+            <b style="color:#ffb74d; font-size:1.05rem;">🚪 CAM 04: OXYGEN & ROVER BAY</b>
             <span style="font-family:monospace; color:#ff9800;">PREPARATION REQUIRED</span>
           </div>
           <p>The pressurized exploration rover is docked. Outside temperature is cold at <b>${temp.currentAvg}°C</b>. Exploration gear is prepped with 11 kg water and 3.5 kg oxygen for the Jezero Crater trek.</p>
-          <p style="color:#ffb74d;">⚠️ <i>Habitat power check is required before cycling the main airlock door. Select <b>CAM 01 (Solar Array)</b> to calibrate or initiate quick start.</i></p>
+          <p style="color:#ffb74d;">⚠️ <i>Habitat power check is required before cycling the main airlock door. Select <b>CAM 01 (Solar Array)</b> to set or initiate quick start.</i></p>
         `;
       } else {
         viewscreen.innerHTML = `
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <b style="color:#4caf50; font-size:1.05rem;">🚪 CAM 04: AIRLOCK & ROVER BAY [READY]</b>
+            <b style="color:#4caf50; font-size:1.05rem;">🚪 CAM 04: OXYGEN & ROVER BAY [READY]</b>
             <span style="font-family:monospace; color:#4caf50;">CLEARANCE GRANTED</span>
           </div>
-          <p>The outpost systems are stabilized. The rover airlock is pressurized and cleared for egress into Jezero Crater.</p>
+          <p>The outpost systems are stabilized. The rover oxygen system is pressurized and cleared for egress into Jezero Crater.</p>
           <button class="choice-btn" id="hub-btn-depart" style="margin-top:14px; background:linear-gradient(135deg,#00695c,#00897b); font-size:1.05rem;">
-            🚪 Cycle Airlock & Depart for Jezero Crater (Begin Sol 1 Trek) →
+            🚪 Cycle Oxygen System & Depart for Jezero Crater (Begin Sol 1 Trek) →
           </button>
         `;
         const departBtn = viewscreen.querySelector('#hub-btn-depart');
