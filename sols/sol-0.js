@@ -363,7 +363,7 @@ export async function mountSol0(container, state) {
 
         if (result.failed) {
           await DadPhone.say({
-            from: 'narrator',
+            from: 'Hab Computer',
             lines: [
               'Returning to the Habitat Hub.',
               `Power deficit recorded: ${state.power}%. Solar actuators took excessive strain.`,
@@ -379,7 +379,7 @@ export async function mountSol0(container, state) {
           });
         } else {
           await DadPhone.say({
-            from: 'narrator',
+            from: 'Hab Computer',
             lines: [
               'Returning to the Habitat Hub.',
               `Power level updated to ${state.power}%. Solar trajectory aligned with NASA ephemeris.`,

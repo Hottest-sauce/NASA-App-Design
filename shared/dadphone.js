@@ -106,11 +106,14 @@ function run(job) {
   addEventListener('keydown', onKey);
   const openTab = () => {
     const tab = el('div', 'dp-tab ' + pos);
+    tab.setAttribute('role', 'dialog'); tab.setAttribute('aria-label', 'Dad-Phone message');
+    tab.innerHTML = '<div class="dp-bezel"><div class="dp-screen"><div class="dp-status"><span>▂▄▆█</span><b>Incoming · Dad-Phone</b><button class="dp-x" aria-label="Close">✕</button></div>'
     tab.setAttribute('role', 'dialog'); tab.setAttribute('aria-label', 'Comms message');
     tab.innerHTML = '<div class="dp-bezel"><div class="dp-screen"><div class="dp-status"><span>▂▄▆█</span><b class="dp-title">Incoming · Comms Link</b><button class="dp-x" aria-label="Close">✕</button></div>'
       + '<div class="dp-body"><div class="dp-portrait"></div><div class="dp-msg"><div class="dp-name"></div><div class="dp-text" aria-hidden="true"></div><div class="dp-cap"></div></div></div>'
       + '<div class="dp-hint"></div><div class="dp-sr" aria-live="polite"></div></div></div>';
     const q = (c) => tab.querySelector('.' + c);
+    Object.assign(st, { tab, nameEl: q('dp-name'), textEl: q('dp-text'), capEl: q('dp-cap'), portEl: q('dp-portrait'), hintEl: q('dp-hint'), srEl: q('dp-sr') });
     Object.assign(st, { tab, titleEl: q('dp-title'), nameEl: q('dp-name'), textEl: q('dp-text'), capEl: q('dp-cap'), portEl: q('dp-portrait'), hintEl: q('dp-hint'), srEl: q('dp-sr') });
     q('dp-x').onclick = (e) => { e.stopPropagation(); close(); };
     q('dp-bezel').onclick = advance;
@@ -121,6 +124,7 @@ function run(job) {
   const caller = charFor(s.lines[0], s);
   const phone = el('button', 'dp-phone ' + pos, '📱<i>1</i>');
   phone.style.setProperty('--dp-accent', caller.color || '#ff9a4d');
+  phone.setAttribute('aria-label', 'Incoming call from ' + (caller.name || 'Dad') + '. Tap to answer.');
   phone.setAttribute('aria-label', 'Incoming call from ' + (caller.name || 'Comms') + '. Tap to answer.');
   phone.onclick = () => { phone.remove(); st.phone = null; openTab(); };
   document.body.append(phone); st.phone = phone;
